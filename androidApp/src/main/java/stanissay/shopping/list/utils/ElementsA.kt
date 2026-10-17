@@ -1,0 +1,619 @@
+package stanissay.shopping.list.utils
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.KeyboardActionHandler
+import androidx.compose.foundation.text.input.OutputTransformation
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.byValue
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+import stanissay.shopping.common.MainColors
+import stanissay.shopping.common.MainConstants
+import stanissay.shopping.common.PaddingStyle
+
+@Composable
+fun MainTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = ColorStyle,
+        typography = TypographyStyle,
+        shapes = ShapesStyle
+    ) { Column(modifier = Modifier.fillMaxSize()) { content() } }
+}
+
+@Composable
+fun MainCard(
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    borderColor: Color = MainColors.TRANSPARENT,
+    contentPadding: PaddingValues = PaddingStyle.xs,
+    containerPadding: PaddingValues = PaddingStyle.xs,
+    shape: Shape = ShapesStyle.medium,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Card(
+        modifier = modifier.padding(containerPadding),
+        shape = shape,
+        elevation = CardDefaults.cardElevation(MainConstants.ELEVATION),
+        border = BorderStroke(Constants.THICKNESS, borderColor),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) { Box(modifier = Modifier.padding(contentPadding)) { content() } }
+}
+
+@Composable
+fun ClickableBox(
+    modifier: Modifier = Modifier,
+    background: Color = MainColors.TRANSPARENT,
+    shape: Shape = ShapesStyle.small,
+    contentAlignment: Alignment = Alignment.Center,
+    rippleRadius: Dp = Dp.Unspecified,
+    rippleColor: Color = MaterialTheme.colorScheme.primary,
+    bounded: Boolean = true,
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
+    onDoubleClick: (() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val clickModifier = when {
+        onLongClick == null && onDoubleClick == null -> {
+            Modifier.clickable(
+                onClick = onClick,
+                indication = ripple(bounded, rippleRadius, rippleColor),
+                interactionSource = interactionSource
+            )
+        }
+        onLongClick == null && onDoubleClick != null -> {
+            Modifier.combinedClickable(
+                onClick = onClick,
+                onDoubleClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDoubleClick()
+                },
+                indication = ripple(bounded, rippleRadius, rippleColor),
+                interactionSource = interactionSource
+            )
+        }
+        onLongClick != null && onDoubleClick == null -> {
+            Modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick()
+                },
+                indication = ripple(bounded, rippleRadius, rippleColor),
+                interactionSource = interactionSource
+            )
+        }
+        else -> {
+            Modifier.combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onLongClick?.invoke()
+                },
+                onDoubleClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDoubleClick?.invoke()
+                },
+                indication = ripple(bounded, rippleRadius, rippleColor),
+                interactionSource = interactionSource
+            )
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(background)
+            .then(clickModifier)
+    ) {
+        Box(
+            modifier = Modifier
+                .align(contentAlignment)
+                .matchParentSize(),
+            contentAlignment = contentAlignment
+        ) { content() }
+    }
+}
+
+@Composable
+fun MainDivider(modifier: Modifier = Modifier) { HorizontalDivider(modifier = modifier, thickness = Constants.THICKNESS, color = MainColors.LIGHT_GRAY) }
+
+@Composable
+fun MainTextField(
+    modifier: Modifier = Modifier,
+    state: TextFieldState,
+    placeholderText: String,
+    fontSize: TextUnit = MaterialTheme.typography.bodyMedium.fontSize,
+    fontPlaceholderSize: TextUnit = MaterialTheme.typography.labelMedium.fontSize,
+    textColor: Color = MaterialTheme.colorScheme.onBackground,
+    lineLimits: TextFieldLineLimits = TextFieldLineLimits.SingleLine,
+    textAlign: TextAlign = TextAlign.Center,
+    alignment: Alignment = Alignment.Center,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    focusRequester: FocusRequester? = null,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
+    imeAction: ImeAction = ImeAction.Unspecified,
+    onKeyboardAction: KeyboardActionHandler? = null,
+    digitOnly: Boolean = false,
+    onTextChange: (String) -> Unit = {}
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.text) { onTextChange(state.text.toString()) }
+
+    Box(modifier = modifier.padding(PaddingStyle.xs)) {
+        BasicTextField(
+            state = state,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .heightIn(min = Constants.BASE_SIZE)
+                .fillMaxWidth()
+                .padding(PaddingStyle.horizontalXs)
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                .onFocusChanged { focusState -> isFocused = focusState.isFocused },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = textColor,
+                fontSize = fontSize,
+                textAlign = textAlign
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+            decorator = { innerTextField ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = alignment
+                ) {
+                    if (state.text.isEmpty()) {
+                        MainText(
+                            text = placeholderText,
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = textAlign,
+                            fontSize = fontPlaceholderSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+            scrollState = rememberScrollState(),
+            keyboardOptions = KeyboardOptions(
+                capitalization = capitalization,
+                autoCorrectEnabled = !digitOnly,
+                keyboardType = keyboardType,
+                imeAction = imeAction
+            ),
+            lineLimits = lineLimits,
+            inputTransformation = InputTransformation.byValue { _, proposed ->
+                if (digitOnly) proposed.filter { it.isDigit() }.toString() else proposed
+            },
+            onKeyboardAction = onKeyboardAction
+        )
+    }
+}
+
+@Composable
+fun MainText(
+    text: AnnotatedString,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    fontSize: TextUnit = style.fontSize,
+    textAlign: TextAlign = TextAlign.Center,
+    color: Color = MaterialTheme.colorScheme.onBackground,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    textDecoration: TextDecoration = TextDecoration.None
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        textAlign = textAlign,
+        style = style,
+        color = color,
+        maxLines = maxLines,
+        textDecoration = textDecoration,
+        overflow = overflow,
+        fontSize = fontSize
+    )
+}
+
+@Composable
+fun MainText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    fontSize: TextUnit = style.fontSize,
+    textAlign: TextAlign = TextAlign.Center,
+    color: Color = MaterialTheme.colorScheme.onBackground,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip,
+    textDecoration: TextDecoration = TextDecoration.None
+) {
+    MainText(
+        text = androidx.compose.ui.text.AnnotatedString(text),
+        modifier = modifier,
+        style = style,
+        textAlign = textAlign,
+        color = color,
+        maxLines = maxLines,
+        overflow = overflow,
+        textDecoration = textDecoration,
+        fontSize = fontSize
+    )
+}
+
+@Composable
+fun CaptionSmallText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun CaptionText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun CaptionLargeText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun LabeledText(
+    label: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    textColor: Color = MaterialTheme.colorScheme.onBackground,
+    textAlign: TextAlign = TextAlign.Center,
+    newLine: Boolean = false
+) {
+    MainText(
+        text = buildAnnotatedString {
+            withStyle(style = MaterialTheme.typography.labelMedium.copy(color = labelColor).toSpanStyle()) {
+                append(label)
+                if (newLine) append("\n")
+                else append(": ")
+            }
+            withStyle(style = SpanStyle(color = textColor)) {
+                append(text)
+            }
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = modifier,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun AccentText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.secondary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun InteractiveText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center,
+    textDecoration: TextDecoration = TextDecoration.None
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.secondary,
+        textAlign = textAlign,
+        textDecoration = textDecoration
+    )
+}
+
+@Composable
+fun PageTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.headlineMedium,
+        textAlign = textAlign,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+fun PageSubTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.headlineSmall,
+        textAlign = textAlign,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@Composable
+fun SectionTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.secondary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun SectionSubTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.secondary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun DialogTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun AlertTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.headlineSmall,
+        color = MainColors.NEGATIVE,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun DialogSubTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.secondary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun DrawerTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun DrawerText(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center,
+    color: Color = MaterialTheme.colorScheme.secondary,
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleMedium,
+        color = color,
+        textAlign = textAlign
+    )
+}
+
+@Composable
+fun CircularBar() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(PaddingStyle.circularBar)
+            .background(MainColors.TRANSPARENT),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        CircularProgressIndicator(
+            color = MaterialTheme.colorScheme.surface,
+            trackColor = MaterialTheme.colorScheme.secondary
+        )
+    }
+}
+
+@Composable
+fun VerticalScrollBar(listState: LazyListState, modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val thumbInfo by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0)
+                return@derivedStateOf 0f to 0f
+
+            val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val itemHeight = visibleItems.sumOf { it.size } / visibleItems.size
+            val contentHeight = layoutInfo.totalItemsCount * itemHeight
+
+            if (contentHeight <= viewportHeight)
+                return@derivedStateOf viewportHeight.toFloat() to 0f
+
+            val thumbHeightPx = (viewportHeight.toFloat() / contentHeight * viewportHeight)
+                .coerceAtLeast(with(density) { 24.dp.toPx() })
+
+            val scrollPx = listState.firstVisibleItemIndex * itemHeight +
+                    listState.firstVisibleItemScrollOffset
+
+            val maxOffset = (viewportHeight - thumbHeightPx).coerceAtLeast(0f)
+
+            val offset = scrollPx.toFloat() / contentHeight.toFloat() * viewportHeight.toFloat()
+            val thumbOffsetPx = offset.coerceIn(0f, maxOffset)
+
+            thumbHeightPx to thumbOffsetPx
+        }
+    }
+
+    val (thumbHeightPx, thumbOffsetPx) = thumbInfo
+
+    if (thumbHeightPx >= with(density) { 24.dp.toPx() } &&
+        thumbHeightPx < 10000f
+    ) {
+        Box(
+            modifier = modifier
+                .fillMaxHeight()
+                .width(Constants.SCROLL_BAR)
+                .padding(PaddingStyle.scrollBarV)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f), ShapesStyle.extraSmall)
+        ) {
+            Box(
+                modifier = Modifier
+                    .height(with(density) { thumbHeightPx.toDp() })
+                    .width(Constants.SCROLL_BAR)
+                    .offset { IntOffset(0, thumbOffsetPx.toInt()) }
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), ShapesStyle.extraSmall)
+            )
+        }
+    }
+}
