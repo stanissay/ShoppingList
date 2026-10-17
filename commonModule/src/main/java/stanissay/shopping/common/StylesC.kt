@@ -30,5 +30,6 @@ object PaddingStyle {
 }
 
 object MainConstants {
-    const val ELEVATION = 8.dp
+    val ELEVATION = 8.dp
+    val SPACE = 4.dp
 }

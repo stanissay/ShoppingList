@@ -15,7 +15,11 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import stanissay.shopping.common.MainColors
+import stanissay.shopping.common.MainStrings
+import stanissay.shopping.list.R
 
 @Composable
 fun BaseButton(
@@ -100,5 +104,126 @@ fun BaseButton(
         modifier = modifier
             .size(size)
             .then(gestureModifier)
+    )
+}
+
+@Composable
+fun AddBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MaterialTheme.colorScheme.secondary,
+    description: String = MainStrings.ADD,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.add_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun DoneBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MainColors.POSITIVE,
+    description: String = MainStrings.DONE,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.done_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun CloseBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MainColors.NEGATIVE,
+    description: String = MainStrings.CLOSE,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.close_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun EditBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE_S,
+    tint: Color = MaterialTheme.colorScheme.secondary,
+    description: String = MainStrings.EDIT,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.edit_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun DeleteBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE_S,
+    tint: Color = MainColors.NEGATIVE,
+    description: String = MainStrings.DELETE,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.delete_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun CheckBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE_S,
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    val img =  painterResource(id = if(checked) R.drawable.check_btn else R.drawable.box_btn)
+    val description = if(checked) MainStrings.NO_BUYING else MainStrings.BUYING
+    val tint = if(checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.secondary
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
     )
 }

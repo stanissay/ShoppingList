@@ -5,6 +5,8 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import stanissay.shopping.common.MainColors
@@ -38,47 +40,28 @@ val ShapesStyle = Shapes(
 
 val TypographyStyle = Typography(
     displayMedium = TextStyle(
-        fontSize = 22.sp
+        fontFamily = FontFamily.Default,
+        fontSize = 24.sp
     ),
 
-    headlineSmall = TextStyle(
-        fontSize = 14.sp
-    ),
     headlineMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontSize = 20.sp
+    ),
+
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.Default,
         fontSize = 16.sp
     ),
-    headlineLarge = TextStyle(
-        fontSize = 18.sp
-    ),
 
-    titleSmall = TextStyle(
-        fontSize = 11.sp
-    ),
-    titleMedium = TextStyle(
-        fontSize = 12.sp
-    ),
-    titleLarge = TextStyle(
-        fontSize = 13.sp
-    ),
-
-    bodySmall = TextStyle(
-        fontSize = 9.sp
-    ),
     bodyMedium = TextStyle(
-        fontSize = 10.sp
-    ),
-    bodyLarge = TextStyle(
-        fontSize = 11.sp
+        fontFamily = FontFamily.Default,
+        fontSize = 14.sp
     ),
 
-    labelSmall = TextStyle(
-        fontSize = 8.sp
-    ),
     labelMedium = TextStyle(
-        fontSize = 9.sp
-    ),
-    labelLarge = TextStyle(
-        fontSize = 10.sp
+        fontFamily = FontFamily.Default,
+        fontSize = 13.sp
     )
 )
 

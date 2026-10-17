@@ -5,12 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
 import androidx.compose.foundation.text.input.KeyboardActionHandler
-import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.byValue
@@ -49,7 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -57,16 +52,13 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
@@ -81,7 +73,7 @@ fun MainTheme(content: @Composable () -> Unit) {
         colorScheme = ColorStyle,
         typography = TypographyStyle,
         shapes = ShapesStyle
-    ) { Column(modifier = Modifier.fillMaxSize()) { content() } }
+    ) { content() }
 }
 
 @Composable
@@ -254,6 +246,14 @@ fun MainTextField(
             },
             onKeyboardAction = onKeyboardAction
         )
+        HorizontalDivider(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(PaddingStyle.horizontalSm),
+            thickness = Constants.THICKNESS,
+            color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -308,110 +308,6 @@ fun MainText(
 }
 
 @Composable
-fun CaptionSmallText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun CaptionText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun CaptionLargeText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun LabeledText(
-    label: String,
-    text: String,
-    modifier: Modifier = Modifier,
-    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    textColor: Color = MaterialTheme.colorScheme.onBackground,
-    textAlign: TextAlign = TextAlign.Center,
-    newLine: Boolean = false
-) {
-    MainText(
-        text = buildAnnotatedString {
-            withStyle(style = MaterialTheme.typography.labelMedium.copy(color = labelColor).toSpanStyle()) {
-                append(label)
-                if (newLine) append("\n")
-                else append(": ")
-            }
-            withStyle(style = SpanStyle(color = textColor)) {
-                append(text)
-            }
-        },
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun AccentText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.secondary,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun InteractiveText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center,
-    textDecoration: TextDecoration = TextDecoration.None
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.secondary,
-        textAlign = textAlign,
-        textDecoration = textDecoration
-    )
-}
-
-@Composable
 fun PageTitle(
     text: String,
     modifier: Modifier = Modifier,
@@ -420,54 +316,9 @@ fun PageTitle(
     MainText(
         text = text,
         modifier = modifier,
-        style = MaterialTheme.typography.headlineMedium,
+        style = MaterialTheme.typography.displayMedium,
         textAlign = textAlign,
         color = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
-fun PageSubTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.headlineSmall,
-        textAlign = textAlign,
-        color = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
-fun SectionTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.secondary,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun SectionSubTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.secondary,
-        textAlign = textAlign
     )
 }
 
@@ -482,67 +333,6 @@ fun DialogTitle(
         modifier = modifier,
         style = MaterialTheme.typography.headlineSmall,
         color = MaterialTheme.colorScheme.primary,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun AlertTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MainColors.NEGATIVE,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun DialogSubTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Start
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.secondary,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun DrawerTitle(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.primary,
-        textAlign = textAlign
-    )
-}
-
-@Composable
-fun DrawerText(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center,
-    color: Color = MaterialTheme.colorScheme.secondary,
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        color = color,
         textAlign = textAlign
     )
 }
