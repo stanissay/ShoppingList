@@ -22,12 +22,8 @@ android {
     }
 
     buildTypes {
-        release {
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
-        }
+        release {}
+        base.archivesName = "ShoppingList-" + defaultConfig.versionName
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
