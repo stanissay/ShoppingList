@@ -8,9 +8,11 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -143,7 +145,8 @@ fun MainList(viewModel: MainViewModelA) {
                 onExpand = { viewModel.toggleItemExpanded(item) },
                 onEdit = { viewModel.showEditItemDialog(item) },
                 onDelete = { viewModel.deleteItem(item) },
-                onCheck = { viewModel.toggleItemDone(item) }
+                onCheck = { viewModel.toggleItemDone(item) },
+                onQuantity = { viewModel.updateQuantity(item, it) }
             )
         }
     }
@@ -156,8 +159,11 @@ fun ShoppingListItem(
     onExpand: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onCheck: () -> Unit
+    onCheck: () -> Unit,
+    onQuantity: (Int) -> Unit
 ) {
+    val quantity = item.quantity?.toIntOrNull()
+
     MainCard(
         modifier = Modifier.fillMaxWidth()
             .animateContentSize(),
@@ -165,46 +171,47 @@ fun ShoppingListItem(
     ) {
         MainLines(modifier = Modifier.matchParentSize())
         ClickableBox(onClick = { onExpand() }) {
-            Column {
+            Column(modifier = Modifier.padding(PaddingStyle.horizontalLg)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
-                        .padding(PaddingStyle.horizontalLg),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CheckBtn(
-                        checked = item.isDone
-                    ) { onCheck() }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1f),
-                        contentAlignment = Alignment.CenterStart
+                    CheckBtn(checked = item.isDone) { onCheck() }
+                    Row(
+                        modifier = Modifier.weight(1f).padding(PaddingStyle.horizontalLg),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         MainText(
-                            text = buildAnnotatedString {
-                                withStyle(
-                                    SpanStyle(
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    append(item.name)
-                                }
-
-                                append(" - ")
-
-                                withStyle(
-                                    SpanStyle(
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                ) {
-                                    append(item.quantity ?: "")
-                                }
-                            },
+                            text = item.name,
                             textAlign = TextAlign.Start,
                             style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(PaddingStyle.horizontalLg)
+                            color = MaterialTheme.colorScheme.primary
                         )
+                        AnimatedVisibility(
+                            visible = !isExpanded && !item.quantity.isNullOrBlank(),
+                            enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(220))
+                        ) {
+                            Row {
+                                MainText(
+                                    text = " - ",
+                                    textAlign = TextAlign.Start,
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                                MainText(
+                                    text = item.quantity.orEmpty(),
+                                    textAlign = TextAlign.Start,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
                     }
+                    AnimatedVisibility(
+                        visible = isExpanded,
+                        enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
+                        exit = fadeOut(tween(120)) + shrinkHorizontally(tween(220))
+                    ) { EditBtn { onEdit() } }
                 }
                 AnimatedVisibility(
                     visible = isExpanded,
@@ -215,11 +222,22 @@ fun ShoppingListItem(
                         modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
+                        item.quantity?.takeIf { it.isNotBlank() }?.let {
+                            quantity?.let { MinusBtn { onQuantity((quantity - 1).coerceAtLeast(1)) } }
+                            MainText(
+                                text = buildAnnotatedString { withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) { append(it) } },
+                                textAlign = TextAlign.Start,
+                                style = MaterialTheme.typography.headlineMedium,
+                                modifier = Modifier.padding(PaddingStyle.horizontalLg)
+                            )
+                            quantity?.let { PlusBtn { onQuantity(quantity + 1) } }
+                        }
                         Spacer(modifier = Modifier.weight(1f))
-                        PlusBtn { }
-                        MinusBtn { }
-                        EditBtn { onEdit() }
-                        DeleteBtn { onDelete() }
+                        AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
+                            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(220))
+                        ) { DeleteBtn { onDelete() } }
                     }
                 }
             }

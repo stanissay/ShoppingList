@@ -172,6 +172,14 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         sortItems()
     }
 
+    fun updateQuantity(item: ShoppingItem, quantity: Int) {
+        shoppingItems = shoppingItems.map {
+            if (it.id == item.id) {
+                it.copy(quantity = quantity.toString())
+            } else it
+        }
+    }
+
     fun reorderItems(fromIndex: Int, toIndex: Int) {
         if (fromIndex !in shoppingItems.indices || toIndex !in shoppingItems.indices) return
         if (fromIndex == toIndex) return
