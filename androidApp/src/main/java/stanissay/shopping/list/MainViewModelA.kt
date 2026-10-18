@@ -28,8 +28,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         showItemDialog = true
     }
 
-    fun toggleItemExpanded(item: ShoppingItem) {
-        expandedItemId = if (expandedItemId == item.id) null else item.id
+    fun toggleItemExpanded(item: ShoppingItem?) {
+        expandedItemId = if (item == null || expandedItemId == item.id) null else item.id
     }
 
     fun sortItems() {

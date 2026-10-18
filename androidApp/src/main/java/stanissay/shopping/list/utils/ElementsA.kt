@@ -1,6 +1,7 @@
 package stanissay.shopping.list.utils
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -45,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -93,6 +95,36 @@ fun MainCard(
         border = BorderStroke(Constants.THICKNESS, borderColor),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) { Box(modifier = Modifier.padding(contentPadding)) { content() } }
+}
+
+@Composable
+fun MainLines(modifier: Modifier) {
+    val cellSize = with(LocalDensity.current) { 32.dp.toPx() }
+
+    Canvas(modifier = modifier) {
+        val columns = (size.width / cellSize).toInt() + 1
+        val rows = (size.height / cellSize).toInt() + 1
+
+        for (i in 0..columns) {
+            val x = cellSize / 2 +  i * cellSize
+            drawLine(
+                color = MainColors.THIN_BORDER.copy(alpha = 0.5f),
+                start = Offset(x, 0f),
+                end = Offset(x, size.height),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        for (i in 0..rows) {
+            val y = cellSize / 2 + i * cellSize
+            drawLine(
+                color = MainColors.THIN_BORDER.copy(alpha = 0.5f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+    }
 }
 
 @Composable

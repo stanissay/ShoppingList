@@ -115,7 +115,47 @@ fun AddBtn(
     description: String = MainStrings.ADD,
     onClick: () -> Unit
 ) {
-    val img = painterResource(id = R.drawable.add_btn)
+    val img = painterResource(id = R.drawable.plus_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun PlusBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE_S,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    description: String = MainStrings.ADD,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.plus_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun MinusBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE_S,
+    tint: Color = MaterialTheme.colorScheme.primary,
+    description: String = MainStrings.ADD,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.minus_btn)
 
     BaseButton(
         painter = img,
