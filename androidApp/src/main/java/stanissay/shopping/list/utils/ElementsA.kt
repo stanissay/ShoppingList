@@ -310,14 +310,13 @@ fun MainText(
 @Composable
 fun PageTitle(
     text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Center
+    modifier: Modifier = Modifier
 ) {
     MainText(
         text = text,
         modifier = modifier,
         style = MaterialTheme.typography.displayMedium,
-        textAlign = textAlign,
+        textAlign = TextAlign.Start,
         color = MaterialTheme.colorScheme.primary
     )
 }

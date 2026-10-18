@@ -12,6 +12,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         private set
     var editItem by mutableStateOf<ShoppingItem?>(null)
     var showItemDialog by mutableStateOf(false)
+    var expandedItemId by mutableStateOf<String?>(null)
+        private set
 
     fun showNewItemDialog() {
         editItem = null
@@ -24,6 +26,10 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     fun showEditItemDialog(item: ShoppingItem) {
         editItem = item
         showItemDialog = true
+    }
+
+    fun toggleItemExpanded(item: ShoppingItem) {
+        expandedItemId = if (expandedItemId == item.id) null else item.id
     }
 
     fun sortItems() {
@@ -52,7 +58,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 val existingQuantity = existingByName.quantity
                 val incomingQuantity = item.quantity
                 val mergedQuantity = when {
-                    existingQuantity == null -> incomingQuantity
+                    (existingQuantity == null || existingByName.isDone) -> incomingQuantity
                     incomingQuantity == null -> existingQuantity
                     else -> {
                         val existingInt = existingQuantity.toIntOrNull()
@@ -75,7 +81,6 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 }
 
                 sortItems()
-                hideItemDialog()
                 return
             }
 
@@ -91,7 +96,6 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             )
 
             sortItems()
-            hideItemDialog()
             return
         }
 
@@ -108,7 +112,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             val existingQuantity = existingByName.quantity
             val incomingQuantity = item.quantity
             val mergedQuantity = when {
-                existingQuantity == null -> incomingQuantity
+                (existingQuantity == null || existingByName.isDone) -> incomingQuantity
                 incomingQuantity == null -> existingQuantity
                 else -> {
                     val existingInt = existingQuantity.toIntOrNull()

@@ -70,9 +70,9 @@ object Constants {
     val BASE_SIZE_XXL = 240.dp
     val BASE_SIZE_XL = 96.dp
     val BASE_SIZE_L = 72.dp
-    val BASE_SIZE = 48.dp
-    val BASE_SIZE_S = 36.dp
-    val BASE_SIZE_XS = 24.dp
+    val BASE_SIZE = 64.dp
+    val BASE_SIZE_S = 48.dp
+    val BASE_SIZE_XS = 36.dp
 
     // Buttons
     val BUTTON_SIZE = 36.dp

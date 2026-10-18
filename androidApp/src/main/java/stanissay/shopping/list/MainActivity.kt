@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,7 +95,6 @@ fun MainHead(viewModel: MainViewModelA) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Spacer(modifier = Modifier.size(Constants.BASE_SIZE))
         PageTitle(MainStrings.HEAD)
         AddBtn { viewModel.showNewItemDialog() }
     }
@@ -104,26 +104,21 @@ fun MainHead(viewModel: MainViewModelA) {
 fun MainList(viewModel: MainViewModelA) {
     val firstDoneIndex = viewModel.shoppingItems.indexOfFirst { it.isDone }
 
-    MainCard(
-        borderColor = MaterialTheme.colorScheme.outline,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(PaddingStyle.xs),
+        verticalArrangement = Arrangement.spacedBy(MainConstants.SPACE)
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(MainConstants.SPACE)
-        ) {
-            items(viewModel.shoppingItems.size) { index ->
-                if (index == firstDoneIndex && firstDoneIndex > 0) MainDivider()
+        items(viewModel.shoppingItems.size) { index ->
+            if (index == firstDoneIndex && firstDoneIndex > 0) MainDivider()
 
-                val item = viewModel.shoppingItems[index]
+            val item = viewModel.shoppingItems[index]
 
-                ShoppingListItem(
-                    item = item,
-                    onEdit = { viewModel.showEditItemDialog(item) },
-                    onDelete = { viewModel.deleteItem(item) },
-                    onCheck = { viewModel.toggleItemDone(item) }
-                )
-            }
+            ShoppingListItem(
+                item = item,
+                onEdit = { viewModel.showEditItemDialog(item) },
+                onDelete = { viewModel.deleteItem(item) },
+                onCheck = { viewModel.toggleItemDone(item) }
+            )
         }
     }
 }
@@ -135,79 +130,78 @@ fun ShoppingListItem(
     onDelete: () -> Unit,
     onCheck: () -> Unit
 ) {
-    MainCard(modifier = Modifier.fillMaxWidth()) {
+    MainCard(
+        modifier = Modifier.fillMaxWidth(),
+        borderColor = MaterialTheme.colorScheme.outline
+    ) {
         ClickableBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Constants.BASE_SIZE),
             onClick = { onEdit() }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(Constants.BASE_SIZE)
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically
+                CheckBtn(
+                    checked = item.isDone
+                ) { onCheck() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f),
+                    contentAlignment = Alignment.CenterStart
                 ) {
-                    CheckBtn(
-                        checked = item.isDone
-                    ) { onCheck() }
+                    MainText(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                append(item.name)
+                            }
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .weight(1f),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        MainText(
-                            text = buildAnnotatedString {
-                                withStyle(
-                                    SpanStyle(
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    append(item.name)
-                                }
+                            append(" - ")
 
-                                append(" - ")
-
-                                withStyle(
-                                    SpanStyle(
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
-                                ) {
-                                    append(item.quantity ?: "")
-                                }
-                            },
-                            textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.headlineMedium,
-                            modifier = Modifier.padding(PaddingStyle.horizontalLg)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
-                    EditBtn { onEdit() }
-                    DeleteBtn { onDelete() }
+                            withStyle(
+                                SpanStyle(
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                append(item.quantity ?: "")
+                            }
+                        },
+                        textAlign = TextAlign.Start,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(PaddingStyle.horizontalLg)
+                    )
                 }
 
-                if (item.isDone) {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawRect(
-                            color = MainColors.BACKGROUND.copy(alpha = 0.4f)
-                        )
+                Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                EditBtn { onEdit() }
+                DeleteBtn { onDelete() }
+            }
 
-                        drawLine(
-                            color = MainColors.GRAY.copy(alpha = 0.6f),
-                            start = Offset(
-                                x = 0.dp.toPx(),
-                                y = size.height / 2
-                            ),
-                            end = Offset(
-                                x = size.width,
-                                y = size.height / 2
-                            ),
-                            strokeWidth = Constants.THICKNESS.toPx()
-                        )
-                    }
+            if (item.isDone) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawRect(
+                        color = MainColors.BACKGROUND.copy(alpha = 0.4f)
+                    )
+
+                    drawLine(
+                        color = MainColors.GRAY.copy(alpha = 0.6f),
+                        start = Offset(
+                            x = 0.dp.toPx(),
+                            y = size.height / 2
+                        ),
+                        end = Offset(
+                            x = size.width,
+                            y = size.height / 2
+                        ),
+                        strokeWidth = Constants.THICKNESS.toPx()
+                    )
                 }
             }
         }
@@ -247,23 +241,17 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                         imeAction = ImeAction.Next
                     )
                 }
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
-                    contentAlignment = Alignment.Center
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     MainTextField(
+                        modifier = Modifier.weight(1f),
                         state = quantity,
                         placeholderText = MainStrings.NULL,
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    CloseBtn { onDismiss() }
                     DoneBtn {
                         if (name.text.toString().isBlank()) {
                             showCustomToast(MainStrings.NO_NAME, context)
@@ -277,6 +265,13 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             isDone = item?.isDone ?: false
                         )
                         viewModel.editItem(finalItem)
+
+                        if (item == null) {
+                            name.clearText()
+                            quantity.clearText()
+                            quantity.edit { append("1") }
+                            focusRequesterName.requestFocus()
+                        }
                     }
                 }
             }
