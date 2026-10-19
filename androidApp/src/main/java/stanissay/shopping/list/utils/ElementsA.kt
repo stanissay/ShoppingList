@@ -77,19 +77,6 @@ import stanissay.shopping.common.PaddingStyle
 
 @Composable
 fun MainTheme(content: @Composable () -> Unit) {
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        AppEventManager.uiEvents.collect { event ->
-            when (event) {
-                is UiEvent.ShowToast -> {
-                    showCustomToast(event.message, context)
-                    AppEventManager.resetReplayCache()
-                }
-            }
-        }
-    }
-
     MaterialTheme(
         colorScheme = ColorStyle,
         typography = TypographyStyle,

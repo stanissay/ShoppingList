@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import stanissay.shopping.common.MainStrings
+import stanissay.shopping.common.ShoppingCategory
 import stanissay.shopping.common.ShoppingItem
 import stanissay.shopping.list.utils.AppEventManager
 import stanissay.shopping.list.utils.UiEvent
@@ -21,9 +22,13 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     fun sendUiEvent(event: UiEvent) { AppEventManager.sendEvent(event) }
     var shoppingItems by mutableStateOf(listOf<ShoppingItem>())
         private set
+    var shoppingCategories by mutableStateOf(listOf<ShoppingCategory>())
+        private set
     var backupShoppingItems: List<ShoppingItem>? = null
     var editItem by mutableStateOf<ShoppingItem?>(null)
+    var editCategory by mutableStateOf<ShoppingCategory?>(null)
     var showItemDialog by mutableStateOf(false)
+    var showCategoryDialog by mutableStateOf(false)
     var expandedItemId by mutableStateOf<String?>(null)
         private set
 
@@ -31,13 +36,25 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         editItem = null
         showItemDialog = true
     }
+    fun showEditItemDialog(item: ShoppingItem) {
+        editItem = item
+        showItemDialog = true
+    }
     fun hideItemDialog() {
         editItem = null
         showItemDialog = false
     }
-    fun showEditItemDialog(item: ShoppingItem) {
-        editItem = item
-        showItemDialog = true
+    fun showNewCategoryDialog() {
+        editCategory = null
+        showCategoryDialog = true
+    }
+    fun showEditCategoryDialog(category: ShoppingCategory) {
+        editCategory = category
+        showCategoryDialog = true
+    }
+    fun hideCategoryDialog() {
+        editCategory = null
+        showCategoryDialog = false
     }
 
     fun toggleItemExpanded(item: ShoppingItem?) {
@@ -57,7 +74,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             )
     }
 
-    fun editItem(item: ShoppingItem) {
+    fun editItem(item: ShoppingItem, categoryId: String?) {
         val originalItem = editItem
         val normalizedName = item.name.trim().lowercase()
         val existingByName = shoppingItems.firstOrNull {
@@ -65,6 +82,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     (originalItem == null || it.id != originalItem.id)
         }
 
+        // New element
         if (originalItem == null) {
             if (existingByName != null) {
                 val existingQuantity = existingByName.quantity
@@ -87,7 +105,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                         it.copy(
                             quantity = mergedQuantity,
                             order = shoppingItems.size,
-                            isDone = false
+                            isDone = false,
+                            categoryId = categoryId
                         )
                     } else it
                 }
@@ -104,20 +123,21 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 id = uniqueId,
                 name = item.name.trim(),
                 isDone = false,
-                order = shoppingItems.size
+                order = shoppingItems.size,
+                categoryId = categoryId
             )
 
             sortItems()
             return
         }
 
-        val originalIndex = shoppingItems.indexOfFirst { it.id == originalItem.id }
 
+        // Edit element
+        val originalIndex = shoppingItems.indexOfFirst { it.id == originalItem.id }
         if (originalIndex == -1) {
             hideItemDialog()
             return
         }
-
         val original = shoppingItems[originalIndex]
 
         if (existingByName != null) {
@@ -142,7 +162,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                         it.copy(
                             quantity = mergedQuantity,
                             order = shoppingItems.size,
-                            isDone = false
+                            isDone = false,
+                            categoryId = categoryId
                         )
                     } else it
                 }
@@ -163,7 +184,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     name = item.name.trim(),
                     quantity = item.quantity,
                     order = shoppingItems.size,
-                    isDone = false
+                    isDone = false,
+                    categoryId = categoryId
                 )
             } else it
         }
@@ -172,7 +194,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         hideItemDialog()
     }
 
-    fun pasteItems(clipboardText: String) {
+    fun pasteItems(clipboardText: String, categoryId: String?) {
         clipboardText.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }
             .forEach { line ->
                 val quantityStart = line.indexOfFirst { it.isDigit() }
@@ -191,8 +213,9 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                             id = "",
                             name = name,
                             quantity = quantity,
-                            order = shoppingItems.size
-                        )
+                            order = shoppingItems.size,
+                        ),
+                        categoryId = categoryId
                     )
                 }
             }
@@ -249,10 +272,62 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun editCategory(category: ShoppingCategory) {
+        val name = category.name.trim()
+        if (name.isEmpty()) return
+        if (shoppingCategories.any { it.id != category.id && it.name.trim().equals(name, ignoreCase = true) }) {
+            viewModelScope.launch { sendUiEvent(UiEvent.ShowToast(MainStrings.DUPLICATE_CATEGORY)) }
+            return
+        }
+        val existing = shoppingCategories.any { it.id == category.id }
+
+        shoppingCategories = if (existing) {
+            shoppingCategories.map {
+                if (it.id == category.id) it.copy(name = name) else it
+            }
+        } else {
+            shoppingCategories + category.copy(
+                id = generateUniqueId(),
+                name = name,
+                order = shoppingCategories.size
+            )
+        }
+        hideCategoryDialog()
+    }
+    fun deleteCategory(id: String?) {
+        shoppingCategories = shoppingCategories.filterNot { it.id == id }
+            .mapIndexed { index, category ->
+                category.copy(order = index)
+            }
+    }
+    fun moveCategory(id: String, newIndex: Int) {
+        val sorted = shoppingCategories.sortedBy { it.order }
+        val oldIndex = sorted.indexOfFirst { it.id == id }
+
+        android.util.Log.d(
+            "CategoryDrag",
+            "id=$id, oldIndex=$oldIndex, newIndex=$newIndex"
+        )
+
+        if (oldIndex == -1) return
+        val targetIndex = newIndex.coerceIn(sorted.indices)
+
+        val reordered = sorted.toMutableList().apply {
+            add(targetIndex, removeAt(oldIndex))
+        }
+
+        shoppingCategories = reordered.mapIndexed { index, category ->
+            category.copy(order = index)
+        }
+    }
+
     private fun generateUniqueId(): String {
         var id: String
         do { id = java.util.UUID.randomUUID().toString()
-        } while (shoppingItems.any { it.id == id })
+        } while (
+            shoppingItems.any { it.id == id } ||
+            shoppingCategories.any { it.id == id }
+        )
         return id
     }
 
@@ -260,5 +335,16 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         if (query.isBlank()) return emptyList()
         return shoppingItems.map { it.name }
             .distinctBy { it.lowercase() }.filter { it.startsWith(query, ignoreCase = true) }.take(5)
+    }
+
+    init {
+        if(shoppingCategories.isEmpty()) {
+            val initialCategory = ShoppingCategory(
+                id = generateUniqueId(),
+                name = MainStrings.HEAD,
+                order = 0
+            )
+            editCategory(initialCategory)
+        }
     }
 }

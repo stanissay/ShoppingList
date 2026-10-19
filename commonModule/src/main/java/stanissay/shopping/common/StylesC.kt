@@ -23,7 +23,7 @@ object MainConstants {
     val ELEVATION = 8.dp
     val SPACE = 4.dp
     val THICKNESS = 1.dp
-    val DONE_LINE = 4.dp
+    val LINE = 4.dp
     val NULL = 0.dp
 
     const val ANIMATION_MS = 300

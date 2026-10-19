@@ -1,14 +1,18 @@
 package stanissay.shopping.list.utils
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -16,6 +20,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import stanissay.shopping.common.MainColors
 import stanissay.shopping.common.MainStrings
@@ -113,18 +118,29 @@ fun AddBtn(
     size: Dp = Constants.BUTTON_SIZE,
     tint: Color = MaterialTheme.colorScheme.secondary,
     description: String = MainStrings.ADD,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.plus_btn)
 
-    BaseButton(
-        painter = img,
-        description = description,
-        modifier = modifier,
-        size = size,
-        tint = tint,
-        onClick = onClick
-    )
+    Box(
+        modifier = Modifier.size(size)
+            .background(
+                color = tint.copy(alpha = 0.25f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        BaseButton(
+            painter = img,
+            description = description,
+            modifier = modifier,
+            size = size,
+            tint = tint,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+    }
 }
 
 @Composable

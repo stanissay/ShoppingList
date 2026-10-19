@@ -35,14 +35,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -75,13 +88,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import stanissay.shopping.common.MainColors
 import stanissay.shopping.common.MainConstants
 import stanissay.shopping.common.MainStrings
 import stanissay.shopping.common.PaddingStyle
+import stanissay.shopping.common.ShoppingCategory
 import stanissay.shopping.common.ShoppingItem
 import stanissay.shopping.list.utils.AddBtn
+import stanissay.shopping.list.utils.AppEventManager
 import stanissay.shopping.list.utils.CheckBtn
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
@@ -101,6 +117,7 @@ import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
 import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.TextDropdownMenu
+import stanissay.shopping.list.utils.UiEvent
 import stanissay.shopping.list.utils.VerticalScrollBar
 import stanissay.shopping.list.utils.showCustomToast
 import kotlin.math.roundToInt
@@ -121,12 +138,7 @@ class MainActivity : ComponentActivity() {
                         .windowInsetsPadding(WindowInsets.safeDrawing)
                         .padding(PaddingStyle.sm)
                 ) {
-                    Column {
-                        MainHead(viewModel)
-                        MainList(viewModel)
-
-                        if(viewModel.showItemDialog) ItemDialog(viewModel) { viewModel.hideItemDialog() }
-                    }
+                    MainList(viewModel)
                     if(isLoading) CircularBar()
                 }
             }
@@ -134,33 +146,192 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainHead(viewModel: MainViewModelA) {
+fun MainList(viewModel: MainViewModelA) {
     val clipboard = LocalClipboard.current
+    val categories = viewModel.shoppingCategories.sortedBy { it.order }
+    val pagerState = rememberPagerState(pageCount = { categories.size })
+    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val currentPage = pagerState.currentPage
+    val activeCategory = categories.getOrNull(pagerState.currentPage)
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        PasteBtn {
-            scope.launch {
-                val text = clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()
-                if (!text.isNullOrBlank()) viewModel.pasteItems(text)
+    SideEffect {
+        android.util.Log.d(
+            "CategoryDrag",
+            "categories=${categories.map { it.name to it.order }}"
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        AppEventManager.uiEvents.collect { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    snackbarHostState.showSnackbar(
+                        message = event.message,
+                        duration = SnackbarDuration.Short
+                    )
+                }
             }
         }
-        PageTitle(MainStrings.HEAD)
-        AddBtn { viewModel.showNewItemDialog() }
     }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { PageTitle(MainStrings.HEAD) },
+                actions = {
+                    PasteBtn {
+                        scope.launch {
+                            val text = clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()
+                            if (!text.isNullOrBlank()) viewModel.pasteItems(text, activeCategory?.id)
+                        }
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            var dropdownExpanded by remember { mutableStateOf(false) }
+            AddBtn(
+                onClick = { viewModel.showNewItemDialog() },
+                onLongClick = { dropdownExpanded = true }
+            )
+            TextDropdownMenu(
+                expanded = dropdownExpanded,
+                onDismissRequest = { dropdownExpanded = false },
+                items = listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY),
+                onItemClick = {
+                    when(it) {
+                        MainStrings.ADD_ELEMENT -> viewModel.showNewItemDialog()
+                        MainStrings.ADD_CATEGORY -> viewModel.showNewCategoryDialog()
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        bottomBar = {
+            if (categories.isNotEmpty()) {
+                BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
+                    val reorderState = rememberReorderableLazyListState(
+                        onMove = { from, to ->
+                            val fromCategory = categories.getOrNull(from.index)
+                            val toIndex = to.index
+                            android.util.Log.d(
+                                "CategoryDrag",
+                                "id=${fromCategory?.id}, oldIndex=${from.index}, newIndex=${to.index}"
+                            )
+                            android.util.Log.d(
+                                "CategoryDrag",
+                                "categories.size=${categories.size}, " +
+                                        "fromCategory=${fromCategory != null}, " +
+                                        "targetValid=${toIndex in categories.indices}"
+                            )
+                            if (fromCategory != null && toIndex in categories.indices) {
+                                viewModel.moveCategory(
+                                    id = fromCategory.id,
+                                    newIndex = toIndex
+                                )
+                            }
+                        },
+                        onDragEnd = { _, _ -> },
+                        canDragOver = { _, _ -> true }
+                    )
+
+                    LazyRow(
+                        state = reorderState.listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .reorderable(reorderState),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        categories.forEachIndexed { index, category ->
+                            item(key = category.id) {
+                                ReorderableItem(
+                                    state = reorderState,
+                                    key = category.id
+                                ) { isDragging ->
+                                    Box(
+                                        modifier = Modifier
+                                            .widthIn(min = Constants.BASE_SIZE_L)
+                                            .detectReorderAfterLongPress(reorderState)
+                                            .shadow(if (isDragging) MainConstants.ELEVATION else MainConstants.NULL),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        ClickableBox(
+                                            modifier = Modifier.fillMaxSize(),
+                                            onClick = {
+                                                scope.launch {
+                                                    pagerState.animateScrollToPage(
+                                                        index
+                                                    )
+                                                }
+                                            },
+                                            onDoubleClick = {
+                                                viewModel.showEditCategoryDialog(
+                                                    category
+                                                )
+                                            }
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.fillMaxSize(),
+                                                horizontalAlignment = Alignment.CenterHorizontally
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(MainConstants.LINE)
+                                                        .background(
+                                                            color = if (index == currentPage) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
+                                                            shape = MaterialTheme.shapes.small
+                                                        )
+                                                )
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    MainText(
+                                                        text = category.name,
+                                                        color = if (index == currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        if (categories.isNotEmpty()) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) { page ->
+                ItemsList(
+                    viewModel = viewModel,
+                    categoryId = categories[page].id
+                )
+            }
+        }
+    }
+
+    if(viewModel.showItemDialog) ItemDialog(viewModel, activeCategory?.id) { viewModel.hideItemDialog() }
+    if(viewModel.showCategoryDialog) CategoryDialog(viewModel) { viewModel.hideCategoryDialog() }
 }
 
 @Composable
-fun MainList(viewModel: MainViewModelA) {
+fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     val haptic = LocalHapticFeedback.current
+    val items = viewModel.shoppingItems.filter { it.categoryId == categoryId }
     var swipedItemId by remember { mutableStateOf<String?>(null) }
-    val firstDoneIndex = viewModel.shoppingItems.indexOfFirst { it.isDone }
-    val reorderState = org.burnoutcrew.reorderable.rememberReorderableLazyListState(
+    val firstDoneIndex = items.indexOfFirst { it.isDone }
+    val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
             viewModel.moveItem(from.index, to.index)
         },
@@ -168,8 +339,8 @@ fun MainList(viewModel: MainViewModelA) {
             viewModel.onDragEnd()
         },
         canDragOver = { from, to ->
-            val fromStep = viewModel.shoppingItems[from.index]
-            val toStep = viewModel.shoppingItems[to.index]
+            val fromStep = items[from.index]
+            val toStep = items[to.index]
             !fromStep.isDone && !toStep.isDone
         }
     )
@@ -188,7 +359,7 @@ fun MainList(viewModel: MainViewModelA) {
                 .padding(PaddingStyle.horizontalSm)
                 .reorderable(reorderState)
         ) {
-            viewModel.shoppingItems.forEachIndexed { index, item ->
+            items.forEachIndexed { index, item ->
                 item(key = item.id) {
                     ReorderableItem(
                         state = reorderState,
@@ -485,7 +656,7 @@ fun ShoppingListItem(
                         clipRect(bottom = Constants.BASE_SIZE.toPx()) {
                             val random = kotlin.random.Random(item.id.hashCode())
                             val centerY = Constants.BASE_SIZE.toPx() / 2
-                            val maxThickness = MainConstants.DONE_LINE.toPx()
+                            val maxThickness = MainConstants.LINE.toPx()
 
                             val points = mutableListOf<Pair<Float, Float>>()
                             var x = 0f
@@ -530,7 +701,7 @@ fun ShoppingListItem(
 }
 
 @Composable
-fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
+fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val item = viewModel.editItem
     val name by remember { mutableStateOf(TextFieldState(item?.name ?: "")) }
@@ -580,7 +751,9 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxHeight()
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     ) {
                         MainTextField(
                             state = name,
@@ -628,7 +801,7 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             order = item?.order ?: 0,
                             isDone = item?.isDone ?: false
                         )
-                        viewModel.editItem(finalItem)
+                        viewModel.editItem(finalItem, categoryId)
 
                         if (item == null) {
                             name.clearText()
@@ -636,6 +809,75 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             quantity.edit { append("1") }
                             focusRequesterName.requestFocus()
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val category = viewModel.editCategory
+    val name by remember { mutableStateOf(TextFieldState(category?.name ?: "")) }
+    val focusRequesterName = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequesterName.requestFocus()
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        MainCard(borderColor = MaterialTheme.colorScheme.outline) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE)
+                        .padding(PaddingStyle.horizontalSm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                    DialogTitle(MainStrings.CATEGORY)
+                    if(viewModel.shoppingCategories.size > 1 && category?.id != null) DeleteBtn { viewModel.deleteCategory(category.id) }
+                    else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
+                    contentAlignment = Alignment.Center
+                ) {
+                    MainTextField(
+                        state = name,
+                        placeholderText = MainStrings.NAME,
+                        focusRequester = focusRequesterName,
+                        imeAction = ImeAction.Next
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE))
+                    DoneBtn {
+                        if (name.text.toString().isBlank()) {
+                            showCustomToast(MainStrings.NO_NAME, context)
+                            return@DoneBtn
+                        }
+                        val finalCategory = ShoppingCategory(
+                            id = category?.id ?: "",
+                            name = name.text.toString(),
+                            order = category?.order ?: 0
+                        )
+                        viewModel.editCategory(finalCategory)
                     }
                 }
             }
