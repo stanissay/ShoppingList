@@ -59,9 +59,11 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Path
@@ -216,13 +218,15 @@ fun MainList(viewModel: MainViewModelA) {
                             scope.launch {
                                 pagerState.animateScrollToPage(to)
                             }
-                        }
+                        },
+                        canDragOver = { _, _ -> true }
                     )
 
                     LazyRow(
                         state = reorderState.listState,
                         modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
-                            .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
+                            .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.large)
+                            .clip(MaterialTheme.shapes.large)
                             .reorderable(reorderState),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -245,9 +249,10 @@ fun MainList(viewModel: MainViewModelA) {
                                         ) {
                                             Box(
                                                 modifier = Modifier.fillMaxWidth().height(MainConstants.LINE)
+                                                    .padding(PaddingStyle.horizontalXs)
                                                     .background(
                                                         color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
-                                                        shape = MaterialTheme.shapes.small
+                                                        shape = MaterialTheme.shapes.extraSmall
                                                     )
                                             )
                                             Box(
@@ -294,19 +299,24 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     val items = viewModel.shoppingItems.filter { it.categoryId == categoryId }
     var swipedItemId by remember { mutableStateOf<String?>(null) }
     val firstDoneIndex = items.indexOfFirst { it.isDone }
+    val currentItems by rememberUpdatedState(items)
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            viewModel.moveItem(from.index, to.index)
+            viewModel.moveItem(categoryId, from.index, to.index)
         },
         onDragEnd = { _, _ ->
             viewModel.onDragEnd()
         },
         canDragOver = { from, to ->
-            val fromStep = items[from.index]
-            val toStep = items[to.index]
-            !fromStep.isDone && !toStep.isDone
+            val current = currentItems
+            val fromItem = current.getOrNull(from.index)
+            val toItem = current.getOrNull(to.index)
+
+            fromItem != null && toItem != null &&
+                    !fromItem.isDone && !toItem.isDone
         }
     )
+
     Box(
         modifier = Modifier
             .fillMaxSize()

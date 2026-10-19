@@ -63,16 +63,22 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
 
     fun sortItems() {
         shoppingItems = shoppingItems
-            .sortedBy { it.order }
-            .mapIndexed { index, item ->
-                item.copy(order = index)
+            .groupBy { it.categoryId }
+            .values
+            .flatMap { categoryItems ->
+                categoryItems
+                    .sortedBy { it.order }
+                    .mapIndexed { index, item ->
+                        item.copy(order = index)
+                    }
+                    .sortedWith(
+                        compareBy<ShoppingItem> { it.isDone }
+                            .thenBy { if (it.isDone) it.name.lowercase() else "" }
+                            .thenBy { it.order }
+                    )
             }
-            .sortedWith(
-                compareBy<ShoppingItem> { it.isDone }
-                    .thenBy { if (it.isDone) it.name.lowercase() else "" }
-                    .thenBy { it.order }
-            )
     }
+
     fun sortCategories() {
         shoppingCategories = shoppingCategories
             .sortedBy { it.order }
@@ -88,6 +94,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             it.name.trim().lowercase() == normalizedName &&
                     (originalItem == null || it.id != originalItem.id)
         }
+        val categoryOrder = shoppingItems.filter { it.categoryId == categoryId }.size
 
         // New element
         if (originalItem == null) {
@@ -111,7 +118,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     if (it.id == existingByName.id) {
                         it.copy(
                             quantity = mergedQuantity,
-                            order = shoppingItems.size,
+                            order = existingByName.order,
                             isDone = false,
                             categoryId = categoryId
                         )
@@ -130,7 +137,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 id = uniqueId,
                 name = item.name.trim(),
                 isDone = false,
-                order = shoppingItems.size,
+                order = categoryOrder,
                 categoryId = categoryId
             )
 
@@ -168,7 +175,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     if (it.id == existingByName.id) {
                         it.copy(
                             quantity = mergedQuantity,
-                            order = shoppingItems.size,
+                            order = existingByName.order,
                             isDone = false,
                             categoryId = categoryId
                         )
@@ -190,7 +197,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     id = uniqueId,
                     name = item.name.trim(),
                     quantity = item.quantity,
-                    order = shoppingItems.size,
+                    order = item.order,
                     isDone = false,
                     categoryId = categoryId
                 )
@@ -248,17 +255,30 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun moveItem(from: Int, to: Int) {
-        if (from !in shoppingItems.indices || to !in shoppingItems.indices) return
+    fun moveItem(categoryId: String, from: Int, to: Int) {
+        val categoryItems = shoppingItems
+            .filter { it.categoryId == categoryId }
+
+        if (from !in categoryItems.indices || to !in categoryItems.indices) return
         if (from == to) return
+
         if (backupShoppingItems == null) backupShoppingItems = shoppingItems
-        val items = shoppingItems.toMutableList()
-        items.add(to, items.removeAt(from))
-        shoppingItems = items.mapIndexed { index, item ->
+
+        val reorderedItems = categoryItems.toMutableList().apply {
+            add(to, removeAt(from))
+        }.mapIndexed { index, item ->
             item.copy(order = index)
         }
+
+        val reorderedById = reorderedItems.associateBy { it.id }
+
+        shoppingItems = shoppingItems.map { item ->
+            reorderedById[item.id] ?: item
+        }
+
         sortItems()
     }
+
     fun onDragEnd() {
         updateOrder(
             newOrder = shoppingItems,
@@ -270,6 +290,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 isLoadingState.value = true
+                sortItems()
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -306,7 +327,6 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             )
         }
 
-        sortCategories()
         hideCategoryDialog()
     }
 
@@ -315,13 +335,13 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         sortCategories()
     }
     fun moveCategory(from: Int, to: Int) {
-        val sorted = shoppingCategories.sortedBy { it.order }
-        if (from !in sorted.indices || to !in sorted.indices || from == to) return
+        if (from !in shoppingCategories.indices || to !in shoppingCategories.indices || from == to) return
+        val sorted = shoppingCategories.sortedBy { it.order }.toMutableList()
+        sorted.add(to, sorted.removeAt(from))
 
-        shoppingCategories = sorted.toMutableList().apply {
-            add(to, removeAt(from))
+        shoppingCategories = sorted.mapIndexed { index, item ->
+            item.copy(order = index)
         }
-        sortCategories()
     }
 
     private fun generateUniqueId(): String {
