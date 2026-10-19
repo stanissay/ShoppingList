@@ -73,6 +73,13 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                     .thenBy { it.order }
             )
     }
+    fun sortCategories() {
+        shoppingCategories = shoppingCategories
+            .sortedBy { it.order }
+            .mapIndexed { index, category ->
+                category.copy(order = index)
+            }
+    }
 
     fun editItem(item: ShoppingItem, categoryId: String?) {
         val originalItem = editItem
@@ -275,10 +282,16 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     fun editCategory(category: ShoppingCategory) {
         val name = category.name.trim()
         if (name.isEmpty()) return
-        if (shoppingCategories.any { it.id != category.id && it.name.trim().equals(name, ignoreCase = true) }) {
-            viewModelScope.launch { sendUiEvent(UiEvent.ShowToast(MainStrings.DUPLICATE_CATEGORY)) }
+
+        if (shoppingCategories.any {
+                it.id != category.id && it.name.trim().equals(name, ignoreCase = true)
+            }) {
+            viewModelScope.launch {
+                sendUiEvent(UiEvent.ShowToast(MainStrings.DUPLICATE_CATEGORY))
+            }
             return
         }
+
         val existing = shoppingCategories.any { it.id == category.id }
 
         shoppingCategories = if (existing) {
@@ -292,33 +305,23 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 order = shoppingCategories.size
             )
         }
+
+        sortCategories()
         hideCategoryDialog()
     }
+
     fun deleteCategory(id: String?) {
         shoppingCategories = shoppingCategories.filterNot { it.id == id }
-            .mapIndexed { index, category ->
-                category.copy(order = index)
-            }
+        sortCategories()
     }
-    fun moveCategory(id: String, newIndex: Int) {
+    fun moveCategory(from: Int, to: Int) {
         val sorted = shoppingCategories.sortedBy { it.order }
-        val oldIndex = sorted.indexOfFirst { it.id == id }
+        if (from !in sorted.indices || to !in sorted.indices || from == to) return
 
-        android.util.Log.d(
-            "CategoryDrag",
-            "id=$id, oldIndex=$oldIndex, newIndex=$newIndex"
-        )
-
-        if (oldIndex == -1) return
-        val targetIndex = newIndex.coerceIn(sorted.indices)
-
-        val reordered = sorted.toMutableList().apply {
-            add(targetIndex, removeAt(oldIndex))
+        shoppingCategories = sorted.toMutableList().apply {
+            add(to, removeAt(from))
         }
-
-        shoppingCategories = reordered.mapIndexed { index, category ->
-            category.copy(order = index)
-        }
+        sortCategories()
     }
 
     private fun generateUniqueId(): String {

@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 
 sealed class UiEvent {
     data class ShowToast(val message: String) : UiEvent()
+    data class ShowSnackbar(val message: String) : UiEvent()
 }
 
 object AppEventManager {

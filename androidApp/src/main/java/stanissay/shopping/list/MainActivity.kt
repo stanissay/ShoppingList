@@ -35,11 +35,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.input.TextFieldState
@@ -55,7 +53,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -149,29 +146,27 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainList(viewModel: MainViewModelA) {
+    val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val categories = viewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val currentPage = pagerState.currentPage
     val activeCategory = categories.getOrNull(pagerState.currentPage)
-
-    SideEffect {
-        android.util.Log.d(
-            "CategoryDrag",
-            "categories=${categories.map { it.name to it.order }}"
-        )
-    }
 
     LaunchedEffect(Unit) {
         AppEventManager.uiEvents.collect { event ->
             when (event) {
                 is UiEvent.ShowToast -> {
+                    showCustomToast(event.message, context)
+                    AppEventManager.resetReplayCache()
+                }
+                is UiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(
                         message = event.message,
                         duration = SnackbarDuration.Short
                     )
+                    AppEventManager.resetReplayCache()
                 }
             }
         }
@@ -215,33 +210,19 @@ fun MainList(viewModel: MainViewModelA) {
                 BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
                     val reorderState = rememberReorderableLazyListState(
                         onMove = { from, to ->
-                            val fromCategory = categories.getOrNull(from.index)
-                            val toIndex = to.index
-                            android.util.Log.d(
-                                "CategoryDrag",
-                                "id=${fromCategory?.id}, oldIndex=${from.index}, newIndex=${to.index}"
-                            )
-                            android.util.Log.d(
-                                "CategoryDrag",
-                                "categories.size=${categories.size}, " +
-                                        "fromCategory=${fromCategory != null}, " +
-                                        "targetValid=${toIndex in categories.indices}"
-                            )
-                            if (fromCategory != null && toIndex in categories.indices) {
-                                viewModel.moveCategory(
-                                    id = fromCategory.id,
-                                    newIndex = toIndex
-                                )
-                            }
+                            viewModel.moveCategory(from.index, to.index)
                         },
-                        onDragEnd = { _, _ -> },
-                        canDragOver = { _, _ -> true }
+                        onDragEnd = { _, to ->
+                            scope.launch {
+                                pagerState.animateScrollToPage(to)
+                            }
+                        }
                     )
 
                     LazyRow(
                         state = reorderState.listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
+                            .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium)
                             .reorderable(reorderState),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -251,50 +232,33 @@ fun MainList(viewModel: MainViewModelA) {
                                     state = reorderState,
                                     key = category.id
                                 ) { isDragging ->
-                                    Box(
-                                        modifier = Modifier
-                                            .widthIn(min = Constants.BASE_SIZE_L)
+                                    ClickableBox(
+                                        modifier = Modifier.width(Constants.BASE_SIZE_L).fillMaxHeight()
                                             .detectReorderAfterLongPress(reorderState)
                                             .shadow(if (isDragging) MainConstants.ELEVATION else MainConstants.NULL),
-                                        contentAlignment = Alignment.Center
+                                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                        onDoubleClick = { viewModel.showEditCategoryDialog(category) }
                                     ) {
-                                        ClickableBox(
+                                        Column(
                                             modifier = Modifier.fillMaxSize(),
-                                            onClick = {
-                                                scope.launch {
-                                                    pagerState.animateScrollToPage(
-                                                        index
-                                                    )
-                                                }
-                                            },
-                                            onDoubleClick = {
-                                                viewModel.showEditCategoryDialog(
-                                                    category
-                                                )
-                                            }
+                                            horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
-                                            Column(
-                                                modifier = Modifier.fillMaxSize(),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(MainConstants.LINE)
-                                                        .background(
-                                                            color = if (index == currentPage) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
-                                                            shape = MaterialTheme.shapes.small
-                                                        )
-                                                )
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    MainText(
-                                                        text = category.name,
-                                                        color = if (index == currentPage) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth().height(MainConstants.LINE)
+                                                    .background(
+                                                        color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
+                                                        shape = MaterialTheme.shapes.small
                                                     )
-                                                }
+                                            )
+                                            Box(
+                                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                MainText(
+                                                    text = category.name,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
                                             }
                                         }
                                     }
@@ -309,8 +273,7 @@ fun MainList(viewModel: MainViewModelA) {
         if (categories.isNotEmpty()) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
                     .padding(innerPadding)
             ) { page ->
                 ItemsList(
