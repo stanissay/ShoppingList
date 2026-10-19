@@ -128,6 +128,26 @@ fun AddBtn(
 }
 
 @Composable
+fun PasteBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MaterialTheme.colorScheme.secondary,
+    description: String = MainStrings.PASTE,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.paste_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
 fun PlusBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,

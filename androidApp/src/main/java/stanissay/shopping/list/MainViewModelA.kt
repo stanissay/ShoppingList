@@ -5,11 +5,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import stanissay.shopping.common.MainStrings
 import stanissay.shopping.common.ShoppingItem
+import stanissay.shopping.list.utils.AppEventManager
+import stanissay.shopping.list.utils.UiEvent
+import kotlin.coroutines.cancellation.CancellationException
 
 class MainViewModelA(app: Application) : AndroidViewModel(app) {
+    val isLoadingState = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = isLoadingState
+    fun sendUiEvent(event: UiEvent) { AppEventManager.sendEvent(event) }
     var shoppingItems by mutableStateOf(listOf<ShoppingItem>())
         private set
+    var backupShoppingItems: List<ShoppingItem>? = null
     var editItem by mutableStateOf<ShoppingItem?>(null)
     var showItemDialog by mutableStateOf(false)
     var expandedItemId by mutableStateOf<String?>(null)
@@ -160,6 +172,32 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         hideItemDialog()
     }
 
+    fun pasteItems(clipboardText: String) {
+        clipboardText.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }
+            .forEach { line ->
+                val quantityStart = line.indexOfFirst { it.isDigit() }
+
+                val name = if (quantityStart >= 0) {
+                    line.substring(0, quantityStart).trim().trimEnd('-', ':', ' ')
+                } else line
+
+                val quantity = if (quantityStart >= 0) {
+                    line.substring(quantityStart).trim()
+                } else null
+
+                if (name.isNotEmpty()) {
+                    editItem(
+                        ShoppingItem(
+                            id = "",
+                            name = name,
+                            quantity = quantity,
+                            order = shoppingItems.size
+                        )
+                    )
+                }
+            }
+    }
+
     fun deleteItem(item: ShoppingItem) {
         shoppingItems = shoppingItems.filterNot { it.id == item.id }
         sortItems()
@@ -180,18 +218,35 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun reorderItems(fromIndex: Int, toIndex: Int) {
-        if (fromIndex !in shoppingItems.indices || toIndex !in shoppingItems.indices) return
-        if (fromIndex == toIndex) return
-
+    fun moveItem(from: Int, to: Int) {
+        if (from !in shoppingItems.indices || to !in shoppingItems.indices) return
+        if (from == to) return
+        if (backupShoppingItems == null) backupShoppingItems = shoppingItems
         val items = shoppingItems.toMutableList()
-        val movedItem = items.removeAt(fromIndex)
-        items.add(toIndex, movedItem)
-
+        items.add(to, items.removeAt(from))
         shoppingItems = items.mapIndexed { index, item ->
             item.copy(order = index)
         }
         sortItems()
+    }
+    fun onDragEnd() {
+        updateOrder(
+            newOrder = shoppingItems,
+            oldOrder = backupShoppingItems ?: shoppingItems
+        )
+        backupShoppingItems = null
+    }
+    fun updateOrder(newOrder: List<ShoppingItem>, oldOrder: List<ShoppingItem>) {
+        viewModelScope.launch {
+            try {
+                isLoadingState.value = true
+            } catch (e: CancellationException) { throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+                shoppingItems = backupShoppingItems ?: emptyList()
+                sendUiEvent(UiEvent.ShowToast(MainStrings.ERROR))
+            } finally { isLoadingState.value = false }
+        }
     }
 
     private fun generateUniqueId(): String {

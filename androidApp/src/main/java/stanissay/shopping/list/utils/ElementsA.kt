@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
@@ -71,6 +72,19 @@ import stanissay.shopping.common.PaddingStyle
 
 @Composable
 fun MainTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        AppEventManager.uiEvents.collect { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    showCustomToast(event.message, context)
+                    AppEventManager.resetReplayCache()
+                }
+            }
+        }
+    }
+
     MaterialTheme(
         colorScheme = ColorStyle,
         typography = TypographyStyle,
@@ -83,8 +97,8 @@ fun MainCard(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     borderColor: Color = MainColors.TRANSPARENT,
-    contentPadding: PaddingValues = PaddingStyle.xs,
-    containerPadding: PaddingValues = PaddingStyle.xs,
+    contentPadding: PaddingValues = PaddingStyle.none,
+    containerPadding: PaddingValues = PaddingStyle.none,
     shape: Shape = ShapesStyle.medium,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -92,7 +106,7 @@ fun MainCard(
         modifier = modifier.padding(containerPadding),
         shape = shape,
         elevation = CardDefaults.cardElevation(MainConstants.ELEVATION),
-        border = BorderStroke(Constants.THICKNESS, borderColor),
+        border = BorderStroke(MainConstants.THICKNESS, borderColor),
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) { Box(modifier = Modifier.padding(contentPadding)) { content() } }
 }
@@ -207,7 +221,9 @@ fun ClickableBox(
 }
 
 @Composable
-fun MainDivider(modifier: Modifier = Modifier) { HorizontalDivider(modifier = modifier, thickness = Constants.THICKNESS, color = MainColors.LIGHT_GRAY) }
+fun MainDivider(modifier: Modifier = Modifier) {
+    HorizontalDivider(modifier = modifier, thickness = MainConstants.THICKNESS, color = MainColors.LIGHT_GRAY)
+}
 
 @Composable
 fun MainTextField(
@@ -283,7 +299,7 @@ fun MainTextField(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(PaddingStyle.horizontalSm),
-            thickness = Constants.THICKNESS,
+            thickness = MainConstants.THICKNESS,
             color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

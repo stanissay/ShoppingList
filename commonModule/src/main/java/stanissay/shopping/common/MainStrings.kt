@@ -3,6 +3,7 @@ package stanissay.shopping.common
 object MainStrings {
     const val HEAD = "Список покупок"
     const val ADD = "Додати"
+    const val PASTE = "Вставити"
     const val EDIT = "Редагувати"
     const val DELETE = "Видалити"
     const val BUYING = "Куплено"
@@ -13,4 +14,5 @@ object MainStrings {
     const val NULL = "0"
     const val NO_NAME = "Введіть назву"
     const val TO_BUY = "Купити"
+    const val ERROR = "Помилка"
 }
