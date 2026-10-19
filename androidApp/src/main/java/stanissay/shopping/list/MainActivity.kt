@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,6 +39,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,6 +71,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -97,9 +100,11 @@ import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
 import stanissay.shopping.list.utils.PlusBtn
+import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.VerticalScrollBar
 import stanissay.shopping.list.utils.showCustomToast
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModelA by viewModels()
@@ -531,9 +536,28 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
     val name by remember { mutableStateOf(TextFieldState(item?.name ?: "")) }
     val quantity by remember { mutableStateOf(TextFieldState(item?.quantity ?: "1")) }
     val focusRequesterName = remember { FocusRequester() }
+    var suggestions by remember { mutableStateOf(emptyList<String>()) }
+    var dropdownExpanded by remember { mutableStateOf(false) }
+    var suggestionSelected by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         focusRequesterName.requestFocus()
+    }
+
+    LaunchedEffect(name.text) {
+        dropdownExpanded = false
+        suggestions = emptyList()
+
+        if (suggestionSelected) {
+            suggestionSelected = false
+            return@LaunchedEffect
+        }
+
+        if (name.text.isNotBlank()) {
+            delay(300.milliseconds)
+            suggestions = viewModel.getNameSuggestions(name.text.toString())
+            dropdownExpanded = suggestions.isNotEmpty()
+        }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -555,13 +579,27 @@ fun ItemDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    MainTextField(
-                        modifier = Modifier.weight(1f),
-                        state = name,
-                        placeholderText = MainStrings.NAME,
-                        focusRequester = focusRequesterName,
-                        imeAction = ImeAction.Next
-                    )
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    ) {
+                        MainTextField(
+                            state = name,
+                            placeholderText = MainStrings.NAME,
+                            focusRequester = focusRequesterName,
+                            imeAction = ImeAction.Next
+                        )
+                        TextDropdownMenu(
+                            modifier = Modifier.align(Alignment.Center),
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false },
+                            items = suggestions,
+                            onItemClick = { selectedName ->
+                                suggestionSelected = true
+                                name.setTextAndPlaceCursorAtEnd(selectedName)
+                                dropdownExpanded = false
+                            }
+                        )
+                    }
                     MainTextField(
                         modifier = Modifier.width(Constants.BASE_SIZE_L),
                         state = quantity,

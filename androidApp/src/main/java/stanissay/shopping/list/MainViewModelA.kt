@@ -255,4 +255,10 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         } while (shoppingItems.any { it.id == id })
         return id
     }
+
+    fun getNameSuggestions(query: String): List<String> {
+        if (query.isBlank()) return emptyList()
+        return shoppingItems.map { it.name }
+            .distinctBy { it.lowercase() }.filter { it.startsWith(query, ignoreCase = true) }.take(5)
+    }
 }

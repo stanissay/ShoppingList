@@ -8,6 +8,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,8 @@ import androidx.compose.foundation.text.input.byValue
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,9 +66,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import stanissay.shopping.common.MainColors
 import stanissay.shopping.common.MainConstants
 import stanissay.shopping.common.PaddingStyle
@@ -223,6 +228,44 @@ fun ClickableBox(
 @Composable
 fun MainDivider(modifier: Modifier = Modifier) {
     HorizontalDivider(modifier = modifier, thickness = MainConstants.THICKNESS, color = MainColors.LIGHT_GRAY)
+}
+
+@Composable
+fun TextDropdownMenu(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    items: List<String>,
+    modifier: Modifier = Modifier,
+    onItemClick: (String) -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+        modifier = modifier.width(Constants.DROPDOWN),
+        properties = PopupProperties(focusable = false),
+        tonalElevation = MainConstants.ELEVATION,
+        shadowElevation = MainConstants.ELEVATION,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(
+            width = MainConstants.THICKNESS,
+            color = MaterialTheme.colorScheme.secondary
+        ),
+        offset = DpOffset(x = MainConstants.SPACE, y = MainConstants.SPACE)
+    ) {
+        Column {
+            items.forEach { item ->
+                DropdownMenuItem(
+                    onClick = {
+                        onItemClick(item)
+                        onDismissRequest()
+                    },
+                    modifier = Modifier,
+                    text = { MainText(item) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
