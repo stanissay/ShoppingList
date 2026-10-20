@@ -2,7 +2,6 @@ package stanissay.shopping.list
 
 import android.app.Activity
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -742,6 +741,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
     val name by remember { mutableStateOf(TextFieldState(item?.name ?: "")) }
     val quantity by remember { mutableStateOf(TextFieldState(item?.quantity ?: "1")) }
     val focusRequesterName = remember { FocusRequester() }
+    val focusRequesterQuantity = remember { FocusRequester() }
     var suggestions by remember { mutableStateOf(emptyList<String>()) }
     var dropdownExpanded by remember { mutableStateOf(false) }
     var suggestionSelected by remember { mutableStateOf(false) }
@@ -794,7 +794,11 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                             state = name,
                             placeholderText = MainStrings.NAME,
                             focusRequester = focusRequesterName,
-                            imeAction = ImeAction.Next
+                            imeAction = ImeAction.Next,
+                            onKeyboardAction = {
+                                quantity.clearText()
+                                focusRequesterQuantity.requestFocus()
+                            }
                         )
                         TextDropdownMenu(
                             modifier = Modifier.align(Alignment.Center),
@@ -812,7 +816,8 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                         modifier = Modifier.width(Constants.BASE_SIZE_L),
                         state = quantity,
                         placeholderText = MainStrings.NULL,
-                        keyboardType = KeyboardType.Number,
+                        focusRequester = focusRequesterQuantity,
+                        keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Done
                     )
                 }
@@ -892,7 +897,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                         state = name,
                         placeholderText = MainStrings.NAME,
                         focusRequester = focusRequesterName,
-                        imeAction = ImeAction.Next
+                        imeAction = ImeAction.Done
                     )
                 }
                 Row(
