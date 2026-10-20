@@ -56,7 +56,6 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         editCategory = null
         showCategoryDialog = false
     }
-
     fun toggleItemExpanded(item: ShoppingItem?) {
         expandedItemId = if (item == null || expandedItemId == item.id) null else item.id
     }
@@ -208,33 +207,6 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         hideItemDialog()
     }
 
-    fun pasteItems(clipboardText: String, categoryId: String?) {
-        clipboardText.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }
-            .forEach { line ->
-                val quantityStart = line.indexOfFirst { it.isDigit() }
-
-                val name = if (quantityStart >= 0) {
-                    line.substring(0, quantityStart).trim().trimEnd('-', ':', ' ')
-                } else line
-
-                val quantity = if (quantityStart >= 0) {
-                    line.substring(quantityStart).trim()
-                } else null
-
-                if (name.isNotEmpty()) {
-                    editItem(
-                        ShoppingItem(
-                            id = "",
-                            name = name,
-                            quantity = quantity,
-                            order = shoppingItems.size,
-                        ),
-                        categoryId = categoryId
-                    )
-                }
-            }
-    }
-
     fun deleteItem(item: ShoppingItem) {
         shoppingItems = shoppingItems.filterNot { it.id == item.id }
         sortItems()
@@ -286,6 +258,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         )
         backupShoppingItems = null
     }
+
     fun updateOrder(newOrder: List<ShoppingItem>, oldOrder: List<ShoppingItem>) {
         viewModelScope.launch {
             try {
@@ -334,6 +307,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         shoppingCategories = shoppingCategories.filterNot { it.id == id }
         sortCategories()
     }
+
     fun moveCategory(from: Int, to: Int) {
         if (from !in shoppingCategories.indices || to !in shoppingCategories.indices || from == to) return
         val sorted = shoppingCategories.sortedBy { it.order }.toMutableList()
@@ -342,6 +316,33 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         shoppingCategories = sorted.mapIndexed { index, item ->
             item.copy(order = index)
         }
+    }
+
+    fun pasteItems(clipboardText: String, categoryId: String?) {
+        clipboardText.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }
+            .forEach { line ->
+                val quantityStart = line.indexOfFirst { it.isDigit() }
+
+                val name = if (quantityStart >= 0) {
+                    line.substring(0, quantityStart).trim().trimEnd('-', ':', ' ')
+                } else line
+
+                val quantity = if (quantityStart >= 0) {
+                    line.substring(quantityStart).trim()
+                } else null
+
+                if (name.isNotEmpty()) {
+                    editItem(
+                        ShoppingItem(
+                            id = "",
+                            name = name,
+                            quantity = quantity,
+                            order = shoppingItems.size,
+                        ),
+                        categoryId = categoryId
+                    )
+                }
+            }
     }
 
     private fun generateUniqueId(): String {

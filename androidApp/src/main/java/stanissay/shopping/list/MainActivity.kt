@@ -231,6 +231,7 @@ fun MainList(viewModel: MainViewModelA) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         categories.forEachIndexed { index, category ->
+                            val listSize = viewModel.shoppingItems.filter { it.categoryId == category.id && !it.isDone }.size.toString()
                             item(key = category.id) {
                                 ReorderableItem(
                                     state = reorderState,
@@ -260,7 +261,7 @@ fun MainList(viewModel: MainViewModelA) {
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 MainText(
-                                                    text = category.name,
+                                                    text = "${category.name} ($listSize)",
                                                     style = MaterialTheme.typography.titleMedium,
                                                     color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
@@ -278,7 +279,8 @@ fun MainList(viewModel: MainViewModelA) {
         if (categories.isNotEmpty()) {
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .padding(innerPadding)
             ) { page ->
                 ItemsList(
