@@ -490,7 +490,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         shoppingItems = emptyList()
         showLogoutDialog = false
         viewModelScope.launch {
-            sendUiEvent(UiEvent.ShowSnackbar("${MainStrings.BYE}, $userName"))
+            sendUiEvent(UiEvent.ShowSnackbar("${MainStrings.GOODBYE}, $userName"))
         }
     }
 

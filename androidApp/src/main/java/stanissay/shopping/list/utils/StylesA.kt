@@ -12,19 +12,13 @@ import stanissay.shopping.common.MainColors
 
 val ColorStyle = darkColorScheme(
     primary = MainColors.FIRST_ACCENT,
-    onPrimary = MainColors.LIGHT_GRAY,
-    onPrimaryContainer = MainColors.WHITE,
     secondary = MainColors.SECOND_ACCENT,
-    onSecondary = MainColors.LIGHT_GRAY,
-    onSecondaryContainer = MainColors.WHITE,
 
     background = MainColors.BACKGROUND,
     onBackground = MainColors.WHITE,
 
-    surface = MainColors.BACKGROUND,
-    onSurface = MainColors.GRAY,
-    surfaceVariant = MainColors.GRAY,
-    onSurfaceVariant = MainColors.LIGHT_GRAY,
+    surface = MainColors.GRAY,
+    onSurface = MainColors.LIGHT_GRAY,
 
     outline = MainColors.THIN_BORDER
 )
@@ -68,10 +62,12 @@ object Constants {
     // Base
     val BASE_SIZE_L = 160.dp
     val BASE_SIZE = 64.dp
+    val BASE_SIZE_S = 32.dp
+    val BASE_SIZE_XS = 24.dp
 
     // Buttons
     val BUTTON_SIZE = 48.dp
-    val BUTTON_SIZE_S = 32.dp
+    val BUTTON_SIZE_S = 36.dp
 
     // Elements
     val SCROLL_BAR = 4.dp       // Vertical scroll bar

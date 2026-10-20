@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
@@ -87,7 +86,7 @@ fun MainTheme(content: @Composable () -> Unit) {
 @Composable
 fun MainCard(
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     borderColor: Color = MainColors.TRANSPARENT,
     contentPadding: PaddingValues = PaddingStyle.none,
     containerPadding: PaddingValues = PaddingStyle.none,
@@ -105,7 +104,7 @@ fun MainCard(
 
 @Composable
 fun MainLines(modifier: Modifier) {
-    val cellSize = with(LocalDensity.current) { 32.dp.toPx() }
+    val cellSize = with(LocalDensity.current) { Constants.BASE_SIZE_S.toPx() }
 
     Canvas(modifier = modifier) {
         val columns = (size.width / cellSize).toInt() + 1
@@ -214,7 +213,7 @@ fun ClickableBox(
 
 @Composable
 fun MainDivider(modifier: Modifier = Modifier) {
-    HorizontalDivider(modifier = modifier, thickness = MainConstants.THICKNESS, color = MainColors.LIGHT_GRAY)
+    HorizontalDivider(modifier = modifier, thickness = MainConstants.THICKNESS, color = MaterialTheme.colorScheme.outline)
 }
 
 @Composable
@@ -232,11 +231,11 @@ fun TextDropdownMenu(
         properties = PopupProperties(focusable = false),
         tonalElevation = MainConstants.ELEVATION,
         shadowElevation = MainConstants.ELEVATION,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium,
         border = BorderStroke(
             width = MainConstants.THICKNESS,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.outline
         ),
         offset = DpOffset(x = MainConstants.SPACE, y = MainConstants.SPACE)
     ) {
@@ -285,7 +284,7 @@ fun MainTextField(
                 .align(Alignment.Center)
                 .heightIn(min = Constants.BASE_SIZE)
                 .fillMaxWidth()
-                .padding(PaddingStyle.horizontalXs)
+                .padding(PaddingStyle.horizontalS)
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { focusState -> isFocused = focusState.isFocused },
             textStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -305,7 +304,7 @@ fun MainTextField(
                             style = MaterialTheme.typography.labelMedium,
                             textAlign = textAlign,
                             fontSize = fontPlaceholderSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     innerTextField()
@@ -328,9 +327,9 @@ fun MainTextField(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(PaddingStyle.horizontalSm),
+                .padding(PaddingStyle.horizontalS),
             thickness = MainConstants.THICKNESS,
-            color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -424,7 +423,7 @@ fun CircularBar() {
         contentAlignment = Alignment.BottomCenter
     ) {
         CircularProgressIndicator(
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.background,
             trackColor = MaterialTheme.colorScheme.secondary
         )
     }
@@ -448,7 +447,7 @@ fun VerticalScrollBar(listState: LazyListState, modifier: Modifier = Modifier) {
                 return@derivedStateOf viewportHeight.toFloat() to 0f
 
             val thumbHeightPx = (viewportHeight.toFloat() / contentHeight * viewportHeight)
-                .coerceAtLeast(with(density) { 24.dp.toPx() })
+                .coerceAtLeast(with(density) { Constants.BASE_SIZE_XS.toPx() })
 
             val scrollPx = listState.firstVisibleItemIndex * itemHeight +
                     listState.firstVisibleItemScrollOffset
@@ -464,7 +463,7 @@ fun VerticalScrollBar(listState: LazyListState, modifier: Modifier = Modifier) {
 
     val (thumbHeightPx, thumbOffsetPx) = thumbInfo
 
-    if (thumbHeightPx >= with(density) { 24.dp.toPx() } &&
+    if (thumbHeightPx >= with(density) { Constants.BASE_SIZE_XS.toPx() } &&
         thumbHeightPx < 10000f
     ) {
         Box(

@@ -54,6 +54,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,11 +65,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -89,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -142,7 +146,7 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
                         .windowInsetsPadding(WindowInsets.safeDrawing)
-                        .padding(PaddingStyle.sm)
+                        .padding(PaddingStyle.xs)
                 ) {
                     MainList(viewModel)
                     if(isLoading) CircularBar()
@@ -158,11 +162,24 @@ fun MainList(viewModel: MainViewModelA) {
     val context = LocalContext.current
     val activity = context as Activity
     val clipboard = LocalClipboard.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val categories = viewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val activeCategory = categories.getOrNull(pagerState.currentPage)
+    val reorderState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            viewModel.moveCategory(from.index, to.index)
+        },
+        onDragEnd = { _, to ->
+            scope.launch {
+                viewModel.updateCategoriesOrder()
+                pagerState.animateScrollToPage(to)
+            }
+        },
+        canDragOver = { _, _ -> true }
+    )
 
     LaunchedEffect(Unit) {
         AppEventManager.uiEvents.collect { event ->
@@ -182,10 +199,35 @@ fun MainList(viewModel: MainViewModelA) {
         }
     }
 
+    LaunchedEffect(pagerState, categories) {
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                val category = categories.getOrNull(page) ?: return@collect
+                val index = categories.indexOfFirst { it.id == category.id }
+                if (index < 0) return@collect
+                val listState = reorderState.listState
+                val itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == category.id }
+                val viewport = listState.layoutInfo
+                val isFullyVisible = itemInfo != null && itemInfo.offset >= viewport.viewportStartOffset &&
+                        itemInfo.offset + itemInfo.size <= viewport.viewportEndOffset
+                if (!isFullyVisible) listState.animateScrollToItem(index)
+            }
+    }
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { PageTitle(MainStrings.HEAD) },
+                colors = TopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.primary,
+                    actionIconContentColor = MaterialTheme.colorScheme.secondary,
+                    subtitleContentColor = MaterialTheme.colorScheme.onBackground
+                ),
+                title = { PageTitle(MainStrings.SHOPPING_LIST) },
                 actions = {
                     if(viewModel.shoppingCategories.isNotEmpty()) {
                         PasteBtn {
@@ -258,10 +300,10 @@ fun MainList(viewModel: MainViewModelA) {
                 hostState = snackbarHostState,
                 snackbar = { data ->
                     Snackbar(
-                        modifier = Modifier.padding(PaddingStyle.sm),
+                        modifier = Modifier.padding(PaddingStyle.xs),
                         shape = MaterialTheme.shapes.medium,
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onBackground,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                         actionColor = MaterialTheme.colorScheme.primary,
                         dismissActionContentColor = MaterialTheme.colorScheme.primary,
                         snackbarData = data
@@ -271,27 +313,12 @@ fun MainList(viewModel: MainViewModelA) {
         },
         bottomBar = {
             if (categories.isNotEmpty()) {
-                BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    val reorderState = rememberReorderableLazyListState(
-                        onMove = { from, to ->
-                            viewModel.moveCategory(from.index, to.index)
-                        },
-                        onDragEnd = { _, to ->
-                            scope.launch {
-                                viewModel.updateCategoriesOrder()
-                                pagerState.animateScrollToPage(to)
-                            }
-                        },
-                        canDragOver = { _, _ -> true }
-                    )
-
+                BottomAppBar(containerColor = MaterialTheme.colorScheme.background) {
                     LazyRow(
                         state = reorderState.listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(Constants.BASE_SIZE)
+                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
                             .background(
-                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                color = MaterialTheme.colorScheme.surface,
                                 shape = MaterialTheme.shapes.large
                             )
                             .clip(MaterialTheme.shapes.large)
@@ -305,14 +332,29 @@ fun MainList(viewModel: MainViewModelA) {
                                     state = reorderState,
                                     key = category.id
                                 ) { isDragging ->
+                                    LaunchedEffect(isDragging) {
+                                        if (isDragging) haptic.performHapticFeedback(
+                                            HapticFeedbackType.LongPress
+                                        )
+                                    }
+
                                     ClickableBox(
-                                        modifier = Modifier
-                                            .width(Constants.BASE_SIZE_L)
-                                            .fillMaxHeight()
-                                            .detectReorderAfterLongPress(reorderState)
-                                            .shadow(if (isDragging) MainConstants.ELEVATION else MainConstants.NULL),
-                                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                        onDoubleClick = { viewModel.showEditCategoryDialog(category) }
+                                        background = MaterialTheme.colorScheme.surface,
+                                        modifier = Modifier.width(Constants.BASE_SIZE_L).fillMaxHeight()
+                                            .shadow(elevation = if(isDragging) MainConstants.ELEVATION else MainConstants.NULL)
+                                            .detectReorderAfterLongPress(reorderState),
+                                        onClick = {
+                                            scope.launch {
+                                                pagerState.animateScrollToPage(
+                                                    index
+                                                )
+                                            }
+                                        },
+                                        onDoubleClick = {
+                                            viewModel.showEditCategoryDialog(
+                                                category
+                                            )
+                                        }
                                     ) {
                                         Column(
                                             modifier = Modifier.fillMaxSize(),
@@ -322,22 +364,20 @@ fun MainList(viewModel: MainViewModelA) {
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .height(MainConstants.LINE)
-                                                    .padding(PaddingStyle.horizontalXs)
+                                                    .padding(PaddingStyle.horizontalS)
                                                     .background(
                                                         color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
                                                         shape = MaterialTheme.shapes.extraSmall
                                                     )
                                             )
                                             Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxWidth(),
+                                                modifier = Modifier.weight(1f).fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 MainText(
                                                     text = "${category.name} ($listSize)",
                                                     style = MaterialTheme.typography.titleMedium,
-                                                    color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                                 )
                                             }
                                         }
@@ -395,8 +435,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     )
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
             .clickable(
                 interactionSource = null,
                 indication = null
@@ -404,9 +443,8 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     ) {
         LazyColumn(
             state = reorderState.listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(PaddingStyle.horizontalSm)
+            modifier = Modifier.fillMaxSize()
+                .padding(PaddingStyle.horizontalS)
                 .reorderable(reorderState)
         ) {
             items.forEachIndexed { index, item ->
@@ -621,16 +659,13 @@ fun ShoppingListItem(
             ) {
                 Column(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(Constants.BASE_SIZE),
+                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if(isExpanded) CheckBtn(checked = item.done) { onCheck() } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                         Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(PaddingStyle.horizontalLg),
+                            modifier = Modifier.weight(1f)
+                                .padding(PaddingStyle.horizontalS),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             MainText(
@@ -671,9 +706,7 @@ fun ShoppingListItem(
                         exit = shrinkVertically(tween(MainConstants.ANIMATION_MS)) + fadeOut(tween(MainConstants.ANIMATION_MS))
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(Constants.BASE_SIZE),
+                            modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             item.quantity?.takeIf { it.isNotBlank() }?.let {
@@ -685,7 +718,7 @@ fun ShoppingListItem(
                                     },
                                     textAlign = TextAlign.Start,
                                     style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier.padding(PaddingStyle.horizontalLg)
+                                    modifier = Modifier.padding(PaddingStyle.horizontalS)
                                 )
                                 quantity?.let { PlusBtn { onQuantity(quantity + 1) } }
                                     ?: Spacer(modifier = Modifier.width(Constants.BUTTON_SIZE_S))
@@ -707,40 +740,69 @@ fun ShoppingListItem(
                             val random = kotlin.random.Random(item.id.hashCode())
                             val centerY = Constants.BASE_SIZE.toPx() / 2
                             val maxThickness = MainConstants.LINE.toPx()
+                            val padding = maxThickness * 4
 
                             val points = mutableListOf<Pair<Float, Float>>()
-                            var x = 0f
+                            var x = 0f + padding
                             var y = centerY
 
-                            while (x < size.width) {
+                            while (x < size.width - padding) {
                                 points.add(x to y)
                                 x = (x + random.nextFloat() * 12.dp.toPx() + 8.dp.toPx()).coerceAtMost(size.width)
                                 y = (y + random.nextFloat() * 2.dp.toPx() - 1.dp.toPx()).coerceIn(centerY - 2.dp.toPx(), centerY + 2.dp.toPx())
                             }
-                            points.add(size.width to y)
+                            points.add(size.width - padding to y)
 
                             val thicknesses = points.map {
                                 maxThickness * (0.8f + random.nextFloat() * 0.4f)
                             }
 
                             val path = Path().apply {
+                                val first = points.first()
+                                val last = points.last()
+                                val firstHalf = thicknesses.first() / 2
+                                val lastHalf = thicknesses.last() / 2
+
+                                moveTo(first.first, first.second - firstHalf)
                                 points.forEachIndexed { index, (px, py) ->
-                                    val half = thicknesses[index] / 2
-                                    if (index == 0) moveTo(px, py - half)
-                                    else lineTo(px, py - half)
+                                    if (index > 0) lineTo(px, py - thicknesses[index] / 2)
                                 }
+
+                                arcTo(
+                                    rect = Rect(
+                                        last.first - lastHalf,
+                                        last.second - lastHalf,
+                                        last.first + lastHalf,
+                                        last.second + lastHalf
+                                    ),
+                                    startAngleDegrees = -90f,
+                                    sweepAngleDegrees = 180f,
+                                    forceMoveTo = false
+                                )
 
                                 points.indices.reversed().forEach { index ->
                                     val (px, py) = points[index]
                                     lineTo(px, py + thicknesses[index] / 2)
                                 }
 
+                                arcTo(
+                                    rect = Rect(
+                                        first.first - firstHalf,
+                                        first.second - firstHalf,
+                                        first.first + firstHalf,
+                                        first.second + firstHalf
+                                    ),
+                                    startAngleDegrees = 90f,
+                                    sweepAngleDegrees = 180f,
+                                    forceMoveTo = false
+                                )
+
                                 close()
                             }
 
                             drawPath(
                                 path = path,
-                                color = MainColors.GRAY.copy(alpha = 0.7f)
+                                color = MainColors.THIN_BORDER.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -789,22 +851,16 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
-                ) { DialogTitle(MainStrings.TO_BUY) }
+                ) { DialogTitle(MainStrings.BUY) }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     ) {
                         MainTextField(
                             state = name,
@@ -838,9 +894,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     )
                 }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
@@ -890,10 +944,8 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE)
-                        .padding(PaddingStyle.horizontalSm),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
+                        .padding(PaddingStyle.horizontalS),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -904,9 +956,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                 }
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
                 ) {
                     MainTextField(
@@ -917,9 +967,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     )
                 }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.BASE_SIZE),
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {

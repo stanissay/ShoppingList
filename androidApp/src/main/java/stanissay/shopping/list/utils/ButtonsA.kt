@@ -115,7 +115,7 @@ fun BaseButton(
 fun AddBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
-    tint: Color = MaterialTheme.colorScheme.secondary,
+    tint: Color = MaterialTheme.colorScheme.primary,
     description: String = MainStrings.ADD,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {}
@@ -185,7 +185,7 @@ fun PlusBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MaterialTheme.colorScheme.primary,
-    description: String = MainStrings.ADD,
+    description: String = MainStrings.PLUS,
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.plus_btn)
@@ -205,7 +205,7 @@ fun MinusBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MaterialTheme.colorScheme.primary,
-    description: String = MainStrings.ADD,
+    description: String = MainStrings.MINUS,
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.minus_btn)
@@ -308,7 +308,7 @@ fun CheckBtn(
     onClick: () -> Unit,
 ) {
     val img =  painterResource(id = if(checked) R.drawable.check_btn else R.drawable.box_btn)
-    val description = if(checked) MainStrings.NO_BUYING else MainStrings.BUYING
+    val description = if(checked) MainStrings.NOT_PURCHASED else MainStrings.PURCHASED
     val tint = if(checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.secondary
 
     BaseButton(
