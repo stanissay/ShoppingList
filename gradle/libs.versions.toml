@@ -1,5 +1,6 @@
 [versions]
 agp = "9.4.1"
+coil = "3.6.3"
 coreKtx = "1.19.1"
 credentials = "1.6.0"
 firebaseBom = "35.0.2"
@@ -27,6 +28,8 @@ androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 burnoutcrew-reordable = { module = "org.burnoutcrew.composereorderable:reorderable", version.ref = "burnoutcrew" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-database = { module = "com.google.firebase:firebase-database" }

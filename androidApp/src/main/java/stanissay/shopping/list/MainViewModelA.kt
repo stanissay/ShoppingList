@@ -2,7 +2,6 @@ package stanissay.shopping.list
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,8 +30,18 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     private val auth = FirebaseAuth.getInstance()
     var isLoggedIn by mutableStateOf(auth.currentUser != null)
         private set
+    var userName by mutableStateOf(auth.currentUser?.displayName)
+        private set
+    var userEmail by mutableStateOf(auth.currentUser?.email)
+        private set
+    var userPhotoUrl by mutableStateOf(auth.currentUser?.photoUrl?.toString())
+        private set
     private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-        isLoggedIn = firebaseAuth.currentUser != null
+        val user = firebaseAuth.currentUser
+        isLoggedIn = user != null
+        userName = user?.displayName
+        userEmail = user?.email
+        userPhotoUrl = user?.photoUrl?.toString()
     }
     val isLoadingState = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = isLoadingState
@@ -47,8 +56,11 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     var editCategory by mutableStateOf<ShoppingCategory?>(null)
     var showItemDialog by mutableStateOf(false)
     var showCategoryDialog by mutableStateOf(false)
+    var showLogoutDialog by mutableStateOf(false)
     var expandedItemId by mutableStateOf<String?>(null)
         private set
+    private var categoriesLoaded = false
+    private var itemsLoaded = false
 
     fun showNewItemDialog() {
         editItem = null
@@ -74,52 +86,62 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         editCategory = null
         showCategoryDialog = false
     }
+    private fun updateLoadingState() {
+        isLoadingState.value = !(categoriesLoaded && itemsLoaded)
+    }
     fun toggleItemExpanded(item: ShoppingItem?) {
         expandedItemId = if (item == null || expandedItemId == item.id) null else item.id
     }
     fun loadAll() {
+        if (auth.currentUser == null) return
+        categoriesLoaded = false
+        itemsLoaded = false
+        isLoadingState.value = true
         observeCategories()
         observeItems()
     }
 
-    private fun observeCategories() {
-        categoriesRef.addValueEventListener(
-            object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    shoppingCategories = snapshot.children.mapNotNull { child ->
-                        val category = child.getValue(ShoppingCategory::class.java)
-                        category?.copy(id = child.key ?: return@mapNotNull null)
-                    }
-                    sortCategories()
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    viewModelScope.launch {
-                        sendUiEvent(UiEvent.ShowSnackbar(error.message))
-                    }
-                }
+    private val categoriesListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            shoppingCategories = snapshot.children.mapNotNull { child ->
+                val category = child.getValue(ShoppingCategory::class.java)
+                category?.copy(id = child.key ?: return@mapNotNull null)
             }
-        )
+            categoriesLoaded = true
+            updateLoadingState()
+            sortCategories()
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            viewModelScope.launch {
+                sendUiEvent(UiEvent.ShowSnackbar(error.message))
+            }
+        }
     }
-
-    private fun observeItems() {
-        itemsRef.addValueEventListener(
-            object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    shoppingItems = snapshot.children.mapNotNull { child ->
-                        val item = child.getValue(ShoppingItem::class.java)
-                        item?.copy(id = child.key ?: return@mapNotNull null)
-                    }
-                    sortItems()
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    viewModelScope.launch {
-                        sendUiEvent(UiEvent.ShowSnackbar(error.message))
-                    }
-                }
+    private val itemsListener = object : ValueEventListener {
+        override fun onDataChange(snapshot: DataSnapshot) {
+            shoppingItems = snapshot.children.mapNotNull { child ->
+                val item = child.getValue(ShoppingItem::class.java)
+                item?.copy(id = child.key ?: return@mapNotNull null)
             }
-        )
+            itemsLoaded = true
+            updateLoadingState()
+            sortItems()
+        }
+
+        override fun onCancelled(error: DatabaseError) {
+            viewModelScope.launch {
+                sendUiEvent(UiEvent.ShowSnackbar(error.message))
+            }
+        }
+    }
+    private fun observeCategories() {
+        if (auth.currentUser == null) return
+        categoriesRef.addValueEventListener(categoriesListener)
+    }
+    private fun observeItems() {
+        if (auth.currentUser == null) return
+        itemsRef.addValueEventListener(itemsListener)
     }
 
     fun sortItems() {
@@ -459,6 +481,17 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     init {
         auth.addAuthStateListener(authListener)
         loadAll()
+    }
+
+    fun logout() {
+        categoriesRef.removeEventListener(categoriesListener)
+        itemsRef.removeEventListener(itemsListener)
+        shoppingCategories = emptyList()
+        shoppingItems = emptyList()
+        showLogoutDialog = false
+        viewModelScope.launch {
+            sendUiEvent(UiEvent.ShowSnackbar("${MainStrings.BYE}, $userName"))
+        }
     }
 
     @SuppressLint("EmptySuperCall")

@@ -41,6 +41,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -71,6 +72,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -85,6 +87,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -102,6 +105,7 @@ import stanissay.shopping.list.utils.AppEventManager
 import stanissay.shopping.list.utils.CheckBtn
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
+import stanissay.shopping.list.utils.CloseBtn
 import stanissay.shopping.list.utils.Constants
 import stanissay.shopping.list.utils.DeleteBtn
 import stanissay.shopping.list.utils.DialogTitle
@@ -116,7 +120,7 @@ import stanissay.shopping.list.utils.MainTheme
 import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
-import stanissay.shopping.list.utils.PersonBtn
+import stanissay.shopping.list.utils.GoogleBtn
 import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.UiEvent
@@ -154,10 +158,10 @@ fun MainList(viewModel: MainViewModelA) {
     val context = LocalContext.current
     val activity = context as Activity
     val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     val categories = viewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val activeCategory = categories.getOrNull(pagerState.currentPage)
 
     LaunchedEffect(Unit) {
@@ -192,12 +196,12 @@ fun MainList(viewModel: MainViewModelA) {
                         }
                     }
                     if(!viewModel.isLoggedIn) {
-                        PersonBtn {
+                        GoogleBtn {
                             scope.launch {
                                 val result = GoogleAuth(activity).signIn()
                                 result.onSuccess {
                                     snackbarHostState.showSnackbar(
-                                        message = MainStrings.HELLO,
+                                        message = "${MainStrings.HELLO}, ${viewModel.userName}",
                                         duration = SnackbarDuration.Short
                                     )
                                     viewModel.loadAll()
@@ -209,34 +213,45 @@ fun MainList(viewModel: MainViewModelA) {
                                 }
                             }
                         }
+                    } else {
+                        AsyncImage(
+                            model = viewModel.userPhotoUrl,
+                            contentDescription = viewModel.userName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(Constants.BUTTON_SIZE)
+                                .clip(CircleShape)
+                                .clickable(onClick = { viewModel.showLogoutDialog = true })
+                        )
                     }
                 }
             )
         },
         floatingActionButton = {
-            var dropdownExpanded by remember { mutableStateOf(false) }
-            AddBtn(
-                onClick = {
-                    if(viewModel.shoppingCategories.isNotEmpty()) {
-                        viewModel.showNewItemDialog()
-                    } else dropdownExpanded = true
-                },
-                onLongClick = { dropdownExpanded = true }
-            )
-            TextDropdownMenu(
-                expanded = dropdownExpanded,
-                onDismissRequest = { dropdownExpanded = false },
-                items =
-                    if(viewModel.shoppingCategories.isNotEmpty()) {
-                        listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY)
-                    } else listOf(MainStrings.ADD_CATEGORY),
-                onItemClick = {
-                    when(it) {
-                        MainStrings.ADD_ELEMENT -> viewModel.showNewItemDialog()
-                        MainStrings.ADD_CATEGORY -> viewModel.showNewCategoryDialog()
+            if(viewModel.isLoggedIn) {
+                var dropdownExpanded by remember { mutableStateOf(false) }
+                AddBtn(
+                    onClick = {
+                        if (viewModel.shoppingCategories.isNotEmpty()) {
+                            viewModel.showNewItemDialog()
+                        } else dropdownExpanded = true
+                    },
+                    onLongClick = { dropdownExpanded = true }
+                )
+                TextDropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false },
+                    items =
+                        if (viewModel.shoppingCategories.isNotEmpty()) {
+                            listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY)
+                        } else listOf(MainStrings.ADD_CATEGORY),
+                    onItemClick = {
+                        when (it) {
+                            MainStrings.ADD_ELEMENT -> viewModel.showNewItemDialog()
+                            MainStrings.ADD_CATEGORY -> viewModel.showNewCategoryDialog()
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         snackbarHost = {
             SnackbarHost(
@@ -352,6 +367,7 @@ fun MainList(viewModel: MainViewModelA) {
 
     if(viewModel.showItemDialog) ItemDialog(viewModel, activeCategory?.id) { viewModel.hideItemDialog() }
     if(viewModel.showCategoryDialog) CategoryDialog(viewModel) { viewModel.hideCategoryDialog() }
+    if(viewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.showLogoutDialog = false }
 }
 
 @Composable
@@ -919,6 +935,40 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             order = category?.order ?: 0
                         )
                         viewModel.editCategory(finalCategory)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val activity = context as Activity
+    val scope = rememberCoroutineScope()
+
+    Dialog(onDismissRequest = onDismiss) {
+        MainCard(borderColor = MaterialTheme.colorScheme.outline) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    contentAlignment = Alignment.Center
+                ) { DialogTitle(MainStrings.LOGOUT) }
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    CloseBtn { onDismiss() }
+                    DoneBtn {
+                        scope.launch {
+                            GoogleAuth(activity).signOut()
+                            viewModel.logout()
+                        }
                     }
                 }
             }

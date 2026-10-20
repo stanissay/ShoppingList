@@ -163,22 +163,20 @@ fun PasteBtn(
 }
 
 @Composable
-fun PersonBtn(
+fun GoogleBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
-    tint: Color = MaterialTheme.colorScheme.secondary,
     description: String = MainStrings.LOGIN,
     onClick: () -> Unit
 ) {
-    val img = painterResource(id = R.drawable.person_btn)
+    val img = painterResource(id = R.drawable.google)
 
-    BaseButton(
+    Image(
         painter = img,
-        description = description,
-        modifier = modifier,
-        size = size,
-        tint = tint,
-        onClick = onClick
+        contentDescription = description,
+        modifier = modifier
+            .size(size)
+            .clickable(onClick = onClick)
     )
 }
 

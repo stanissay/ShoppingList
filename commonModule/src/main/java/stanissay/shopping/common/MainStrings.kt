@@ -3,6 +3,7 @@ package stanissay.shopping.common
 object MainStrings {
     const val HEAD = "Список покупок"
     const val HELLO = "Привіт"
+    const val BYE = "Бувай"
     const val LOGIN = "Увійти"
     const val LOGOUT = "Вийти"
     const val ADD = "Додати"

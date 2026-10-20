@@ -1,7 +1,6 @@
 package stanissay.shopping.list
 
 import android.app.Activity
-import android.util.Log
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -10,13 +9,21 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
+import stanissay.shopping.common.GoogleUser
 
 class GoogleAuth(private val activity: Activity) {
     private val auth = FirebaseAuth.getInstance()
     private val credentialManager = CredentialManager.create(activity)
 
-    suspend fun signIn(): Result<String> = runCatching {
-        auth.currentUser?.let { return Result.success(it.uid) }
+    suspend fun signIn(): Result<GoogleUser> = runCatching {
+        auth.currentUser?.let { user ->
+            return@runCatching GoogleUser(
+                uid = user.uid,
+                name = user.displayName,
+                email = user.email,
+                photoUrl = user.photoUrl?.toString()
+            )
+        }
 
         val googleOption = GetSignInWithGoogleOption.Builder(
             activity.getString(R.string.default_web_client_id)
@@ -31,11 +38,7 @@ class GoogleAuth(private val activity: Activity) {
             request = request
         )
 
-        Log.d("LOGIN", result.toString())
-
         val credential = result.credential
-
-        Log.d("LOGIN", credential.toString())
 
         check(credential is CustomCredential &&
                 credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
@@ -43,16 +46,24 @@ class GoogleAuth(private val activity: Activity) {
 
         val googleCredential = GoogleIdTokenCredential.createFrom(credential.data)
 
-        Log.d("LOGIN", googleCredential.toString())
-
         val firebaseCredential = GoogleAuthProvider.getCredential(
             googleCredential.idToken,
             null
         )
 
-        Log.d("LOGIN", firebaseCredential.toString())
+        val authResult = auth.signInWithCredential(firebaseCredential).await()
+        val user = authResult.user ?: error("Firebase не повернув користувача")
 
-        auth.signInWithCredential(firebaseCredential).await()
-        auth.currentUser?.uid ?: error("Firebase не повернув користувача")
+        GoogleUser(
+            uid = user.uid,
+            name = user.displayName ?: googleCredential.displayName,
+            email = user.email ?: googleCredential.id,
+            photoUrl = user.photoUrl?.toString()
+                ?: googleCredential.profilePictureUri?.toString()
+        )
+    }
+
+    fun signOut() {
+        auth.signOut()
     }
 }

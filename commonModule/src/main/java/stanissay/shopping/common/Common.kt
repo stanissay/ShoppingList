@@ -3,6 +3,14 @@ package stanissay.shopping.common
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class GoogleUser(
+    val uid: String,
+    val name: String?,
+    val email: String?,
+    val photoUrl: String?
+)
+
+@Serializable
 data class ShoppingItem(
     val id: String = "",
     var name: String = "",
