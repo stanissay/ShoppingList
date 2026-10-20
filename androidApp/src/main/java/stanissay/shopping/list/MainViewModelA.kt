@@ -1,14 +1,22 @@
 package stanissay.shopping.list
 
+import android.annotation.SuppressLint
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import stanissay.shopping.common.MainStrings
 import stanissay.shopping.common.ShoppingCategory
 import stanissay.shopping.common.ShoppingItem
@@ -17,6 +25,15 @@ import stanissay.shopping.list.utils.UiEvent
 import kotlin.coroutines.cancellation.CancellationException
 
 class MainViewModelA(app: Application) : AndroidViewModel(app) {
+    private val database = FirebaseDatabase.getInstance()
+    val itemsRef = database.getReference("items")
+    val categoriesRef = database.getReference("categories")
+    private val auth = FirebaseAuth.getInstance()
+    var isLoggedIn by mutableStateOf(auth.currentUser != null)
+        private set
+    private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        isLoggedIn = firebaseAuth.currentUser != null
+    }
     val isLoadingState = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = isLoadingState
     fun sendUiEvent(event: UiEvent) { AppEventManager.sendEvent(event) }
@@ -24,7 +41,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         private set
     var shoppingCategories by mutableStateOf(listOf<ShoppingCategory>())
         private set
-    var backupShoppingItems: List<ShoppingItem>? = null
+    private var backupShoppingItems: List<ShoppingItem>? = null
+    private var backupShoppingCategories: List<ShoppingCategory>? = null
     var editItem by mutableStateOf<ShoppingItem?>(null)
     var editCategory by mutableStateOf<ShoppingCategory?>(null)
     var showItemDialog by mutableStateOf(false)
@@ -59,6 +77,50 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     fun toggleItemExpanded(item: ShoppingItem?) {
         expandedItemId = if (item == null || expandedItemId == item.id) null else item.id
     }
+    fun loadAll() {
+        observeCategories()
+        observeItems()
+    }
+
+    private fun observeCategories() {
+        categoriesRef.addValueEventListener(
+            object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    shoppingCategories = snapshot.children.mapNotNull { child ->
+                        val category = child.getValue(ShoppingCategory::class.java)
+                        category?.copy(id = child.key ?: return@mapNotNull null)
+                    }
+                    sortCategories()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    viewModelScope.launch {
+                        sendUiEvent(UiEvent.ShowSnackbar(error.message))
+                    }
+                }
+            }
+        )
+    }
+
+    private fun observeItems() {
+        itemsRef.addValueEventListener(
+            object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    shoppingItems = snapshot.children.mapNotNull { child ->
+                        val item = child.getValue(ShoppingItem::class.java)
+                        item?.copy(id = child.key ?: return@mapNotNull null)
+                    }
+                    sortItems()
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    viewModelScope.launch {
+                        sendUiEvent(UiEvent.ShowSnackbar(error.message))
+                    }
+                }
+            }
+        )
+    }
 
     fun sortItems() {
         shoppingItems = shoppingItems
@@ -71,8 +133,8 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                         item.copy(order = index)
                     }
                     .sortedWith(
-                        compareBy<ShoppingItem> { it.isDone }
-                            .thenBy { if (it.isDone) it.name.lowercase() else "" }
+                        compareBy<ShoppingItem> { it.done }
+                            .thenBy { if (it.done) it.name.lowercase() else "" }
                             .thenBy { it.order }
                     )
             }
@@ -87,144 +149,135 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     }
 
     fun editItem(item: ShoppingItem, categoryId: String?) {
+        isLoadingState.value = true
         val originalItem = editItem
         val normalizedName = item.name.trim().lowercase()
+        val categoryOrder = shoppingItems.count { it.categoryId == categoryId }
         val existingByName = shoppingItems.firstOrNull {
             it.name.trim().lowercase() == normalizedName &&
                     (originalItem == null || it.id != originalItem.id)
         }
-        val categoryOrder = shoppingItems.filter { it.categoryId == categoryId }.size
 
-        // New element
-        if (originalItem == null) {
-            if (existingByName != null) {
-                val existingQuantity = existingByName.quantity
-                val incomingQuantity = item.quantity
-                val mergedQuantity = when {
-                    (existingQuantity == null || existingByName.isDone) -> incomingQuantity
-                    incomingQuantity == null -> existingQuantity
-                    else -> {
-                        val existingInt = existingQuantity.toIntOrNull()
-                        val incomingInt = incomingQuantity.toIntOrNull()
-
-                        if (existingInt != null && incomingInt != null) {
-                            (existingInt + incomingInt).toString()
-                        } else incomingQuantity
-                    }
-                }
-
-                shoppingItems = shoppingItems.map {
-                    if (it.id == existingByName.id) {
-                        it.copy(
-                            quantity = mergedQuantity,
-                            order = existingByName.order,
-                            isDone = false,
-                            categoryId = categoryId
-                        )
-                    } else it
-                }
-
-                sortItems()
-                return
-            }
-
-            val uniqueId = if (item.id.isNotBlank() &&
-                shoppingItems.none { it.id == item.id }
-            ) item.id else generateUniqueId()
-
-            shoppingItems = shoppingItems + item.copy(
-                id = uniqueId,
-                name = item.name.trim(),
-                isDone = false,
-                order = categoryOrder,
-                categoryId = categoryId
-            )
-
-            sortItems()
-            return
-        }
-
-
-        // Edit element
-        val originalIndex = shoppingItems.indexOfFirst { it.id == originalItem.id }
-        if (originalIndex == -1) {
-            hideItemDialog()
-            return
-        }
-        val original = shoppingItems[originalIndex]
-
-        if (existingByName != null) {
-            val existingQuantity = existingByName.quantity
+        fun mergeQuantity(existing: ShoppingItem): String? {
+            val existingQuantity = existing.quantity
             val incomingQuantity = item.quantity
-            val mergedQuantity = when {
-                (existingQuantity == null || existingByName.isDone) -> incomingQuantity
+
+            return when {
+                existingQuantity == null || existing.done || existing.categoryId != categoryId -> incomingQuantity
                 incomingQuantity == null -> existingQuantity
                 else -> {
                     val existingInt = existingQuantity.toIntOrNull()
                     val incomingInt = incomingQuantity.toIntOrNull()
-
                     if (existingInt != null && incomingInt != null) {
                         (existingInt + incomingInt).toString()
                     } else incomingQuantity
                 }
             }
+        }
 
-            shoppingItems = shoppingItems.filterNot { it.id == original.id }
-                .map {
-                    if (it.id == existingByName.id) {
-                        it.copy(
-                            quantity = mergedQuantity,
-                            order = existingByName.order,
-                            isDone = false,
-                            categoryId = categoryId
-                        )
-                    } else it
-                }
+        fun saveItem(updated: ShoppingItem, deleteId: String? = null) {
+            val updates = mutableMapOf<String, Any?>()
+            if (deleteId != null && deleteId != updated.id) {
+                updates[deleteId] = null
+            }
+            updates[updated.id] = updated
 
-            sortItems()
+            itemsRef.updateChildren(updates)
+                .addOnSuccessListener {}.addOnFailureListener { error ->
+                    viewModelScope.launch {
+                        sendUiEvent(UiEvent.ShowToast(error.message ?: "Помилка збереження товару"))
+                    }
+                }.addOnCompleteListener { isLoadingState.value = false }
+        }
+
+        if (originalItem == null) {
+            if (existingByName != null) {
+                saveItem(
+                    existingByName.copy(
+                        quantity = mergeQuantity(existingByName),
+                        done = false,
+                        categoryId = categoryId
+                    )
+                )
+                return
+            }
+
+            val uniqueId = if (item.id.isNotBlank() && shoppingItems.none { it.id == item.id }) item.id else generateUniqueId()
+
+            saveItem(
+                item.copy(
+                    id = uniqueId,
+                    name = item.name.trim(),
+                    done = false,
+                    order = categoryOrder,
+                    categoryId = categoryId
+                )
+            )
+            return
+        }
+
+        val original = shoppingItems.firstOrNull { it.id == originalItem.id }
+        if (original == null) {
             hideItemDialog()
             return
         }
 
-        val uniqueId = if (item.id.isNotBlank() &&
-            shoppingItems.none { it.id == item.id && it.id != original.id }
-        ) item.id else original.id
-
-        shoppingItems = shoppingItems.map {
-            if (it.id == original.id) {
-                original.copy(
-                    id = uniqueId,
-                    name = item.name.trim(),
-                    quantity = item.quantity,
-                    order = item.order,
-                    isDone = false,
+        if (existingByName != null) {
+            saveItem(
+                existingByName.copy(
+                    quantity = mergeQuantity(existingByName),
+                    done = false,
                     categoryId = categoryId
-                )
-            } else it
+                ),
+                deleteId = original.id
+            )
+            hideItemDialog()
+            return
         }
 
-        sortItems()
+        val updated = original.copy(
+            name = item.name.trim(),
+            quantity = item.quantity,
+            order = item.order,
+            done = false,
+            categoryId = categoryId
+        )
+
+        saveItem(updated)
         hideItemDialog()
     }
 
     fun deleteItem(item: ShoppingItem) {
-        shoppingItems = shoppingItems.filterNot { it.id == item.id }
-        sortItems()
+        isLoadingState.value = true
+        itemsRef.child(item.id)
+            .removeValue()
+            .addOnFailureListener { error ->
+                viewModelScope.launch {
+                    sendUiEvent(UiEvent.ShowSnackbar(error.message ?: "Помилка видалення товару"))
+                }
+            }.addOnCompleteListener { isLoadingState.value = false }
     }
 
     fun toggleItemDone(item: ShoppingItem) {
-        shoppingItems = shoppingItems.map {
-            if (it.id == item.id) it.copy(isDone = !it.isDone) else it
-        }
-        sortItems()
+        itemsRef.child(item.id)
+            .child("done")
+            .setValue(!item.done)
+            .addOnFailureListener { error ->
+                viewModelScope.launch {
+                    sendUiEvent(UiEvent.ShowSnackbar(error.message ?: "Помилка оновлення товару"))
+                }
+            }
     }
 
     fun updateQuantity(item: ShoppingItem, quantity: Int) {
-        shoppingItems = shoppingItems.map {
-            if (it.id == item.id) {
-                it.copy(quantity = quantity.toString())
-            } else it
-        }
+        itemsRef.child(item.id)
+            .child("quantity")
+            .setValue(quantity.toString())
+            .addOnFailureListener { error ->
+                viewModelScope.launch {
+                    sendUiEvent(UiEvent.ShowSnackbar(error.message ?: "Помилка оновлення кількості"))
+                }
+            }
     }
 
     fun moveItem(categoryId: String, from: Int, to: Int) {
@@ -251,70 +304,114 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         sortItems()
     }
 
-    fun onDragEnd() {
-        updateOrder(
-            newOrder = shoppingItems,
-            oldOrder = backupShoppingItems ?: shoppingItems
-        )
-        backupShoppingItems = null
-    }
-
-    fun updateOrder(newOrder: List<ShoppingItem>, oldOrder: List<ShoppingItem>) {
+    fun updateItemsOrder() {
+        val newOrder = shoppingItems
+        val oldOrder = backupShoppingItems ?: shoppingItems
         viewModelScope.launch {
             try {
                 isLoadingState.value = true
-                sortItems()
-            } catch (e: CancellationException) { throw e
+
+                val updates = newOrder.filter { newItem ->
+                    oldOrder.find { it.id == newItem.id }?.order != newItem.order
+                }.associate { item ->
+                    "${item.id}/order" to item.order
+                }
+                if (updates.isNotEmpty()) itemsRef.updateChildren(updates).await()
+
+                backupShoppingItems = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
-                shoppingItems = backupShoppingItems ?: emptyList()
-                sendUiEvent(UiEvent.ShowToast(MainStrings.ERROR))
-            } finally { isLoadingState.value = false }
+                shoppingItems = backupShoppingItems ?: oldOrder
+                sendUiEvent(UiEvent.ShowSnackbar(e.message ?: "Помилка оновлення порядку"))
+            } finally {
+                backupShoppingItems = null
+                isLoadingState.value = false
+            }
         }
     }
 
     fun editCategory(category: ShoppingCategory) {
+        isLoadingState.value = true
         val name = category.name.trim()
         if (name.isEmpty()) return
 
-        if (shoppingCategories.any {
-                it.id != category.id && it.name.trim().equals(name, ignoreCase = true)
-            }) {
-            viewModelScope.launch {
-                sendUiEvent(UiEvent.ShowToast(MainStrings.DUPLICATE_CATEGORY))
-            }
+        if (shoppingCategories.any { it.id != category.id && it.name.trim().equals(name, ignoreCase = true) }) {
+            viewModelScope.launch { sendUiEvent(UiEvent.ShowToast(MainStrings.DUPLICATE_CATEGORY)) }
             return
         }
 
         val existing = shoppingCategories.any { it.id == category.id }
 
-        shoppingCategories = if (existing) {
-            shoppingCategories.map {
-                if (it.id == category.id) it.copy(name = name) else it
-            }
-        } else {
-            shoppingCategories + category.copy(
+        val updatedCategory = if (existing) { category.copy(name = name) } else {
+            category.copy(
                 id = generateUniqueId(),
                 name = name,
                 order = shoppingCategories.size
             )
         }
 
-        hideCategoryDialog()
+        categoriesRef.child(updatedCategory.id)
+            .setValue(updatedCategory)
+            .addOnSuccessListener {
+                hideCategoryDialog()
+            }.addOnFailureListener { error ->
+                viewModelScope.launch {
+                    sendUiEvent(UiEvent.ShowToast(error.message ?: "Помилка оновлення категорії"))
+                }
+            }.addOnCompleteListener { isLoadingState.value = false }
     }
 
     fun deleteCategory(id: String?) {
-        shoppingCategories = shoppingCategories.filterNot { it.id == id }
-        sortCategories()
+        isLoadingState.value = true
+        if (id == null) return
+
+        categoriesRef.child(id)
+            .removeValue()
+            .addOnSuccessListener { hideCategoryDialog() }
+            .addOnFailureListener { error ->
+                viewModelScope.launch {
+                    sendUiEvent(UiEvent.ShowToast(error.message ?: "Помилка видалення категорії"))
+                }
+            }.addOnCompleteListener { isLoadingState.value = false }
     }
 
     fun moveCategory(from: Int, to: Int) {
-        if (from !in shoppingCategories.indices || to !in shoppingCategories.indices || from == to) return
-        val sorted = shoppingCategories.sortedBy { it.order }.toMutableList()
-        sorted.add(to, sorted.removeAt(from))
+        val sorted = shoppingCategories.sortedBy { it.order }
+        if (from !in sorted.indices || to !in sorted.indices || from == to) return
+        if (backupShoppingCategories == null) backupShoppingCategories = shoppingCategories
 
-        shoppingCategories = sorted.mapIndexed { index, item ->
-            item.copy(order = index)
+        val reordered = sorted.toMutableList().apply { add(to, removeAt(from)) }
+
+        shoppingCategories = reordered.mapIndexed { index, category ->
+            category.copy(order = index)
+        }
+    }
+
+    fun updateCategoriesOrder() {
+        val newOrder = shoppingCategories
+        val oldOrder = backupShoppingCategories ?: shoppingCategories
+        viewModelScope.launch {
+            try {
+                isLoadingState.value = true
+
+                val updates = newOrder.filter { newCategory ->
+                    oldOrder.find { it.id == newCategory.id }?.order != newCategory.order
+                }.associate { category ->
+                    "${category.id}/order" to category.order
+                }
+                if (updates.isNotEmpty()) categoriesRef.updateChildren(updates).await()
+
+                backupShoppingCategories = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                shoppingCategories = backupShoppingCategories ?: oldOrder
+                sendUiEvent(UiEvent.ShowSnackbar(e.message ?: MainStrings.ERROR))
+            } finally {
+                backupShoppingCategories = null
+                isLoadingState.value = false
+            }
         }
     }
 
@@ -322,11 +419,9 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         clipboardText.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }
             .forEach { line ->
                 val quantityStart = line.indexOfFirst { it.isDigit() }
-
                 val name = if (quantityStart >= 0) {
                     line.substring(0, quantityStart).trim().trimEnd('-', ':', ' ')
                 } else line
-
                 val quantity = if (quantityStart >= 0) {
                     line.substring(quantityStart).trim()
                 } else null
@@ -362,13 +457,13 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        if(shoppingCategories.isEmpty()) {
-            val initialCategory = ShoppingCategory(
-                id = generateUniqueId(),
-                name = MainStrings.HEAD,
-                order = 0
-            )
-            editCategory(initialCategory)
-        }
+        auth.addAuthStateListener(authListener)
+        loadAll()
+    }
+
+    @SuppressLint("EmptySuperCall")
+    override fun onCleared() {
+        auth.removeAuthStateListener(authListener)
+        super.onCleared()
     }
 }

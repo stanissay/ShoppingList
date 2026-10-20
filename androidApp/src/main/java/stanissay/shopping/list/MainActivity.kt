@@ -1,6 +1,8 @@
 package stanissay.shopping.list
 
+import android.app.Activity
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -47,6 +49,7 @@ import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -114,6 +117,7 @@ import stanissay.shopping.list.utils.MainTheme
 import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
+import stanissay.shopping.list.utils.PersonBtn
 import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.UiEvent
@@ -149,6 +153,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainList(viewModel: MainViewModelA) {
     val context = LocalContext.current
+    val activity = context as Activity
     val clipboard = LocalClipboard.current
     val categories = viewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
@@ -179,10 +184,31 @@ fun MainList(viewModel: MainViewModelA) {
             TopAppBar(
                 title = { PageTitle(MainStrings.HEAD) },
                 actions = {
-                    PasteBtn {
-                        scope.launch {
-                            val text = clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()
-                            if (!text.isNullOrBlank()) viewModel.pasteItems(text, activeCategory?.id)
+                    if(viewModel.shoppingCategories.isNotEmpty()) {
+                        PasteBtn {
+                            scope.launch {
+                                val text = clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()
+                                if (!text.isNullOrBlank()) viewModel.pasteItems(text, activeCategory?.id)
+                            }
+                        }
+                    }
+                    if(!viewModel.isLoggedIn) {
+                        PersonBtn {
+                            scope.launch {
+                                val result = GoogleAuth(activity).signIn()
+                                result.onSuccess {
+                                    snackbarHostState.showSnackbar(
+                                        message = MainStrings.HELLO,
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    viewModel.loadAll()
+                                }.onFailure { error ->
+                                    snackbarHostState.showSnackbar(
+                                        message = error.message.toString(),
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -191,13 +217,20 @@ fun MainList(viewModel: MainViewModelA) {
         floatingActionButton = {
             var dropdownExpanded by remember { mutableStateOf(false) }
             AddBtn(
-                onClick = { viewModel.showNewItemDialog() },
+                onClick = {
+                    if(viewModel.shoppingCategories.isNotEmpty()) {
+                        viewModel.showNewItemDialog()
+                    } else dropdownExpanded = true
+                },
                 onLongClick = { dropdownExpanded = true }
             )
             TextDropdownMenu(
                 expanded = dropdownExpanded,
                 onDismissRequest = { dropdownExpanded = false },
-                items = listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY),
+                items =
+                    if(viewModel.shoppingCategories.isNotEmpty()) {
+                        listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY)
+                    } else listOf(MainStrings.ADD_CATEGORY),
                 onItemClick = {
                     when(it) {
                         MainStrings.ADD_ELEMENT -> viewModel.showNewItemDialog()
@@ -206,7 +239,22 @@ fun MainList(viewModel: MainViewModelA) {
                 }
             )
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                snackbar = { data ->
+                    Snackbar(
+                        modifier = Modifier.padding(PaddingStyle.sm),
+                        shape = MaterialTheme.shapes.medium,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
+                        actionColor = MaterialTheme.colorScheme.primary,
+                        dismissActionContentColor = MaterialTheme.colorScheme.primary,
+                        snackbarData = data
+                    )
+                }
+            )
+        },
         bottomBar = {
             if (categories.isNotEmpty()) {
                 BottomAppBar(containerColor = MaterialTheme.colorScheme.surface) {
@@ -216,6 +264,7 @@ fun MainList(viewModel: MainViewModelA) {
                         },
                         onDragEnd = { _, to ->
                             scope.launch {
+                                viewModel.updateCategoriesOrder()
                                 pagerState.animateScrollToPage(to)
                             }
                         },
@@ -224,21 +273,28 @@ fun MainList(viewModel: MainViewModelA) {
 
                     LazyRow(
                         state = reorderState.listState,
-                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
-                            .background(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.large)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(Constants.BASE_SIZE)
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                shape = MaterialTheme.shapes.large
+                            )
                             .clip(MaterialTheme.shapes.large)
                             .reorderable(reorderState),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         categories.forEachIndexed { index, category ->
-                            val listSize = viewModel.shoppingItems.filter { it.categoryId == category.id && !it.isDone }.size.toString()
+                            val listSize = viewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }.size.toString()
                             item(key = category.id) {
                                 ReorderableItem(
                                     state = reorderState,
                                     key = category.id
                                 ) { isDragging ->
                                     ClickableBox(
-                                        modifier = Modifier.width(Constants.BASE_SIZE_L).fillMaxHeight()
+                                        modifier = Modifier
+                                            .width(Constants.BASE_SIZE_L)
+                                            .fillMaxHeight()
                                             .detectReorderAfterLongPress(reorderState)
                                             .shadow(if (isDragging) MainConstants.ELEVATION else MainConstants.NULL),
                                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
@@ -249,7 +305,9 @@ fun MainList(viewModel: MainViewModelA) {
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                             Box(
-                                                modifier = Modifier.fillMaxWidth().height(MainConstants.LINE)
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(MainConstants.LINE)
                                                     .padding(PaddingStyle.horizontalXs)
                                                     .background(
                                                         color = if (category.id == activeCategory?.id) MaterialTheme.colorScheme.primary else MainColors.TRANSPARENT,
@@ -257,7 +315,9 @@ fun MainList(viewModel: MainViewModelA) {
                                                     )
                                             )
                                             Box(
-                                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 MainText(
@@ -300,14 +360,14 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     val haptic = LocalHapticFeedback.current
     val items = viewModel.shoppingItems.filter { it.categoryId == categoryId }
     var swipedItemId by remember { mutableStateOf<String?>(null) }
-    val firstDoneIndex = items.indexOfFirst { it.isDone }
+    val firstDoneIndex = items.indexOfFirst { it.done }
     val currentItems by rememberUpdatedState(items)
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
             viewModel.moveItem(categoryId, from.index, to.index)
         },
         onDragEnd = { _, _ ->
-            viewModel.onDragEnd()
+            viewModel.updateItemsOrder()
         },
         canDragOver = { from, to ->
             val current = currentItems
@@ -315,7 +375,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
             val toItem = current.getOrNull(to.index)
 
             fromItem != null && toItem != null &&
-                    !fromItem.isDone && !toItem.isDone
+                    !fromItem.done && !toItem.done
         }
     )
 
@@ -407,7 +467,7 @@ fun ShoppingListItem(
     }
 
     fun animateCheck(onFinished: (() -> Unit)? = null) {
-        val targetY = if (item.isDone) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
+        val targetY = if (item.done) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
         scope.launch {
             val xAnimation = launch {
                 Animatable(offsetX).animateTo(
@@ -551,7 +611,7 @@ fun ShoppingListItem(
                             .height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if(isExpanded) CheckBtn(checked = item.isDone) { onCheck() } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                        if(isExpanded) CheckBtn(checked = item.done) { onCheck() } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -625,7 +685,7 @@ fun ShoppingListItem(
                     }
                 }
 
-                if (item.isDone) {
+                if (item.done) {
                     Canvas(modifier = Modifier.matchParentSize()) {
                         drawRect(color = MainColors.BACKGROUND.copy(alpha = 0.5f))
                         clipRect(bottom = Constants.BASE_SIZE.toPx()) {
@@ -773,8 +833,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                             id = item?.id ?: "",
                             name = name.text.toString(),
                             quantity = quantity.text.toString().ifBlank { null },
-                            order = item?.order ?: 0,
-                            isDone = item?.isDone ?: false
+                            order = item?.order ?: 0
                         )
                         viewModel.editItem(finalItem, categoryId)
 
@@ -795,6 +854,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
 fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val category = viewModel.editCategory
+    val items = viewModel.shoppingItems.filter { it.id == category?.id }
     val name by remember { mutableStateOf(TextFieldState(category?.name ?: "")) }
     val focusRequesterName = remember { FocusRequester() }
 
@@ -818,8 +878,9 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 ) {
                     Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                     DialogTitle(MainStrings.CATEGORY)
-                    if(viewModel.shoppingCategories.size > 1 && category?.id != null) DeleteBtn { viewModel.deleteCategory(category.id) }
-                    else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                    if(viewModel.shoppingCategories.size > 1 && category?.id != null && items.isEmpty()) {
+                        DeleteBtn { viewModel.deleteCategory(category.id) }
+                    } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                 }
                 Box(
                     modifier = Modifier

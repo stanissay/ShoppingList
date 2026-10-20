@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import stanissay.shopping.common.MainColors
 import stanissay.shopping.common.MainStrings
@@ -119,7 +118,7 @@ fun AddBtn(
     tint: Color = MaterialTheme.colorScheme.secondary,
     description: String = MainStrings.ADD,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit = {}
 ) {
     val img = painterResource(id = R.drawable.plus_btn)
 
@@ -152,6 +151,26 @@ fun PasteBtn(
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.paste_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun PersonBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MaterialTheme.colorScheme.secondary,
+    description: String = MainStrings.LOGIN,
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.person_btn)
 
     BaseButton(
         painter = img,

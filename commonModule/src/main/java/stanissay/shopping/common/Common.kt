@@ -4,17 +4,17 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ShoppingItem(
-    val id: String,
-    var name: String,
+    val id: String = "",
+    var name: String = "",
     var quantity: String? = null,
-    var isDone: Boolean = false,
-    var order: Int,
+    var done: Boolean = false,
+    var order: Int = 0,
     var categoryId: String? = null
 )
 
 @Serializable
 data class ShoppingCategory(
-    val id: String,
-    var name: String,
-    val order: Int
+    val id: String = "",
+    var name: String = "",
+    val order: Int = 0
 )
