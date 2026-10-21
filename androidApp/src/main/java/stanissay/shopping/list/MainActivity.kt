@@ -8,6 +8,7 @@ import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -41,10 +43,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -115,6 +120,7 @@ import stanissay.shopping.list.utils.DeleteBtn
 import stanissay.shopping.list.utils.DialogTitle
 import stanissay.shopping.list.utils.DoneBtn
 import stanissay.shopping.list.utils.EditBtn
+import stanissay.shopping.list.utils.GoogleBtn
 import stanissay.shopping.list.utils.MainCard
 import stanissay.shopping.list.utils.MainDivider
 import stanissay.shopping.list.utils.MainLines
@@ -124,7 +130,6 @@ import stanissay.shopping.list.utils.MainTheme
 import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
-import stanissay.shopping.list.utils.GoogleBtn
 import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.UiEvent
@@ -662,7 +667,16 @@ fun ShoppingListItem(
                         modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if(isExpanded) CheckBtn(checked = item.done) { onCheck() } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
+                        Box(
+                            modifier = Modifier.width(Constants.BUTTON_SIZE_S),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = isExpanded,
+                                enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                            ) { CheckBtn(checked = item.done) { onCheck() } }
+                        }
                         Row(
                             modifier = Modifier.weight(1f)
                                 .padding(PaddingStyle.horizontalS),
@@ -674,31 +688,54 @@ fun ShoppingListItem(
                                 style = MaterialTheme.typography.headlineMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            AnimatedVisibility(
-                                visible = !isExpanded && !item.quantity.isNullOrBlank(),
-                                enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                                exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
-                            ) {
-                                Row {
-                                    MainText(
-                                        text = " - ",
-                                        textAlign = TextAlign.Start,
-                                        style = MaterialTheme.typography.headlineMedium
-                                    )
-                                    MainText(
-                                        text = item.quantity.orEmpty(),
-                                        textAlign = TextAlign.Start,
-                                        style = MaterialTheme.typography.headlineMedium,
-                                        color = MaterialTheme.colorScheme.secondary
-                                    )
+                        }
+                        Row(
+                            modifier = Modifier.height(Constants.BASE_SIZE),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            item.quantity?.takeIf { it.isNotBlank() }?.let {
+                                Box(
+                                    modifier = Modifier.width(Constants.BUTTON_SIZE_S),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = isExpanded && quantity != null,
+                                        enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                        exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                    ) {
+                                        MinusBtn {
+                                            onQuantity((quantity!! - 1).coerceAtLeast(1))
+                                        }
+                                    }
+                                }
+
+                                MainText(
+                                    text = buildAnnotatedString {
+                                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
+                                            append(it)
+                                        }
+                                    },
+                                    textAlign = TextAlign.Start,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    modifier = Modifier.padding(PaddingStyle.horizontalS)
+                                )
+
+                                Box(
+                                    modifier = Modifier.width(Constants.BUTTON_SIZE_S),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = isExpanded && quantity != null,
+                                        enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                        exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                    ) {
+                                        PlusBtn {
+                                            onQuantity(quantity!! + 1)
+                                        }
+                                    }
                                 }
                             }
                         }
-                        AnimatedVisibility(
-                            visible = isExpanded,
-                            enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                            exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
-                        ) { EditBtn { onEdit() } }
                     }
                     AnimatedVisibility(
                         visible = isExpanded,
@@ -706,56 +743,86 @@ fun ShoppingListItem(
                         exit = shrinkVertically(tween(MainConstants.ANIMATION_MS)) + fadeOut(tween(MainConstants.ANIMATION_MS))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            item.quantity?.takeIf { it.isNotBlank() }?.let {
-                                quantity?.let { MinusBtn { onQuantity((quantity - 1).coerceAtLeast(1)) } }
-                                    ?: Spacer(modifier = Modifier.width(Constants.BUTTON_SIZE_S))
+                            if (item.note.isNotBlank()) {
                                 MainText(
-                                    text = buildAnnotatedString {
-                                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) { append(it) }
-                                    },
+                                    modifier = Modifier.weight(1f).heightIn(min = Constants.BASE_SIZE, max = Constants.BASE_SIZE_L)
+                                        .padding(PaddingStyle.xl)
+                                        .verticalScroll(rememberScrollState()),
+                                    text = item.note,
                                     textAlign = TextAlign.Start,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier.padding(PaddingStyle.horizontalS)
                                 )
-                                quantity?.let { PlusBtn { onQuantity(quantity + 1) } }
-                                    ?: Spacer(modifier = Modifier.width(Constants.BUTTON_SIZE_S))
+                            } else Spacer(modifier = Modifier.weight(1f).height(Constants.BASE_SIZE))
+                            Row(
+                                modifier = Modifier.height(Constants.BASE_SIZE),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                EditBtn { onEdit() }
+                                DeleteBtn { onDelete() }
                             }
-                            Spacer(modifier = Modifier.weight(1f))
-                            AnimatedVisibility(
-                                visible = isExpanded,
-                                enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                                exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
-                            ) { DeleteBtn { onDelete() } }
                         }
                     }
                 }
 
                 if (item.done) {
+                    val endPadding by animateDpAsState(
+                        targetValue = if (isExpanded) {
+                            Constants.BUTTON_SIZE_S * 3 + MainConstants.LINE * 4
+                        } else MainConstants.LINE * 4,
+                        animationSpec = tween(MainConstants.ANIMATION_MS),
+                        label = "endPadding"
+                    )
+
+                    val randomOffsets = remember(item.id) {
+                        val random = kotlin.random.Random(item.id.hashCode())
+                        List(500) { random.nextFloat() to random.nextFloat() }
+                    }
+
+                    val randomThicknesses = remember(item.id) {
+                        val random = kotlin.random.Random(item.id.hashCode() + 1)
+                        List(500) { 0.8f + random.nextFloat() * 0.4f }
+                    }
+
                     Canvas(modifier = Modifier.matchParentSize()) {
                         drawRect(color = MainColors.BACKGROUND.copy(alpha = 0.5f))
+
                         clipRect(bottom = Constants.BASE_SIZE.toPx()) {
-                            val random = kotlin.random.Random(item.id.hashCode())
                             val centerY = Constants.BASE_SIZE.toPx() / 2
                             val maxThickness = MainConstants.LINE.toPx()
-                            val padding = maxThickness * 4
-
+                            val startPaddingPx = maxThickness * 4
+                            val endPaddingPx = with(density) { endPadding.toPx() }
+                            val stepMin = 8.dp.toPx()
+                            val stepRandom = 12.dp.toPx()
+                            val yRange = 2.dp.toPx()
                             val points = mutableListOf<Pair<Float, Float>>()
-                            var x = 0f + padding
+                            val thicknesses = mutableListOf<Float>()
+                            var x = startPaddingPx
                             var y = centerY
+                            var index = 0
 
-                            while (x < size.width - padding) {
+                            points.add(x to y)
+                            thicknesses.add(maxThickness * randomThicknesses[index++])
+
+                            while (true) {
+                                val nextX = x + stepMin + randomOffsets[index].first * stepRandom
+
+                                if (nextX >= size.width - endPaddingPx) break
+
+                                x = nextX
+                                y = (y + randomOffsets[index].second * 2f * yRange - yRange)
+                                    .coerceIn(centerY - yRange, centerY + yRange)
+
                                 points.add(x to y)
-                                x = (x + random.nextFloat() * 12.dp.toPx() + 8.dp.toPx()).coerceAtMost(size.width)
-                                y = (y + random.nextFloat() * 2.dp.toPx() - 1.dp.toPx()).coerceIn(centerY - 2.dp.toPx(), centerY + 2.dp.toPx())
+                                thicknesses.add(maxThickness * randomThicknesses[index])
+                                index++
                             }
-                            points.add(size.width - padding to y)
 
-                            val thicknesses = points.map {
-                                maxThickness * (0.8f + random.nextFloat() * 0.4f)
-                            }
+                            val endX = (size.width - endPaddingPx).coerceAtLeast(startPaddingPx)
+                            val endY = if (points.size > 1) points.last().second else centerY
+
+                            points.add(endX to endY)
+                            thicknesses.add(maxThickness * randomThicknesses[index.coerceAtMost(499)])
 
                             val path = Path().apply {
                                 val first = points.first()
@@ -764,8 +831,10 @@ fun ShoppingListItem(
                                 val lastHalf = thicknesses.last() / 2
 
                                 moveTo(first.first, first.second - firstHalf)
-                                points.forEachIndexed { index, (px, py) ->
-                                    if (index > 0) lineTo(px, py - thicknesses[index] / 2)
+                                points.forEachIndexed { i, (px, py) ->
+                                    if (i > 0) {
+                                        lineTo(px, py - thicknesses[i] / 2)
+                                    }
                                 }
 
                                 arcTo(
@@ -780,9 +849,9 @@ fun ShoppingListItem(
                                     forceMoveTo = false
                                 )
 
-                                points.indices.reversed().forEach { index ->
-                                    val (px, py) = points[index]
-                                    lineTo(px, py + thicknesses[index] / 2)
+                                points.indices.reversed().forEach { i ->
+                                    val (px, py) = points[i]
+                                    lineTo(px, py + thicknesses[i] / 2)
                                 }
 
                                 arcTo(
@@ -818,11 +887,13 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
     val item = viewModel.editItem
     val name by remember { mutableStateOf(TextFieldState(item?.name ?: "")) }
     val quantity by remember { mutableStateOf(TextFieldState(item?.quantity ?: "1")) }
+    val note by remember { mutableStateOf(TextFieldState(item?.note ?: "")) }
     val focusRequesterName = remember { FocusRequester() }
     val focusRequesterQuantity = remember { FocusRequester() }
     var suggestions by remember { mutableStateOf(emptyList<String>()) }
     var dropdownExpanded by remember { mutableStateOf(false) }
     var suggestionSelected by remember { mutableStateOf(false) }
+    var isInitialValue by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         focusRequesterName.requestFocus()
@@ -831,6 +902,11 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
     LaunchedEffect(name.text) {
         dropdownExpanded = false
         suggestions = emptyList()
+
+        if (isInitialValue) {
+            isInitialValue = false
+            return@LaunchedEffect
+        }
 
         if (suggestionSelected) {
             suggestionSelected = false
@@ -893,6 +969,22 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                         imeAction = ImeAction.Done
                     )
                 }
+                MainCard(
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE_L),
+                    contentPadding = PaddingStyle.xs,
+                    containerPadding = PaddingStyle.xl,
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    MainTextField(
+                        modifier = Modifier.fillMaxSize(),
+                        state = note,
+                        placeholderText = MainStrings.NOTE,
+                        keyboardType = KeyboardType.Text,
+                        lineLimits = TextFieldLineLimits.Default,
+                        textAlign = TextAlign.Start,
+                        alignment = Alignment.TopStart
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
@@ -908,6 +1000,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                             id = item?.id ?: "",
                             name = name.text.toString(),
                             quantity = quantity.text.toString().ifBlank { null },
+                            note = note.text.toString(),
                             order = item?.order ?: 0
                         )
                         viewModel.editItem(finalItem, categoryId)

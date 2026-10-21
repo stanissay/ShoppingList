@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 
 object PaddingStyle {
     val xs = PaddingValues(4.dp)
+    val xl = PaddingValues(16.dp)
 
     val horizontalS = PaddingValues(horizontal = 8.dp)
     val horizontalXl = PaddingValues(horizontal = 16.dp)

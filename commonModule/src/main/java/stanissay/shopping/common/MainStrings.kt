@@ -18,6 +18,7 @@ object MainStrings {
     const val CLOSE = "Закрити"
     const val NAME = "Назва"
     const val NULL = "0"
+    const val NOTE = "Примітка"
     const val NO_NAME = "Введіть назву"
     const val PLUS = "Плюс"
     const val MINUS = "Мінус"

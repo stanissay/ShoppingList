@@ -14,6 +14,7 @@ data class GoogleUser(
 data class ShoppingItem(
     val id: String = "",
     var name: String = "",
+    var note: String = "",
     var quantity: String? = null,
     var done: Boolean = false,
     var order: Int = 0,

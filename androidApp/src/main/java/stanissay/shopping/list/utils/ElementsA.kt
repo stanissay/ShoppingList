@@ -323,14 +323,16 @@ fun MainTextField(
             },
             onKeyboardAction = onKeyboardAction
         )
-        HorizontalDivider(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(PaddingStyle.horizontalS),
-            thickness = MainConstants.THICKNESS,
-            color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
-        )
+        if (lineLimits == TextFieldLineLimits.SingleLine) {
+            HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(PaddingStyle.horizontalS),
+                thickness = MainConstants.THICKNESS,
+                color = if (isFocused) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 

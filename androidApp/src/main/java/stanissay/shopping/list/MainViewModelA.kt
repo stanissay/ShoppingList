@@ -216,6 +216,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
             if (existingByName != null) {
                 saveItem(
                     existingByName.copy(
+                        note = item.note,
                         quantity = mergeQuantity(existingByName),
                         done = false,
                         categoryId = categoryId
@@ -230,6 +231,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
                 item.copy(
                     id = uniqueId,
                     name = item.name.trim(),
+                    note = item.note,
                     done = false,
                     order = categoryOrder,
                     categoryId = categoryId
@@ -247,6 +249,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         if (existingByName != null) {
             saveItem(
                 existingByName.copy(
+                    note = item.note,
                     quantity = mergeQuantity(existingByName),
                     done = false,
                     categoryId = categoryId
@@ -259,6 +262,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
 
         val updated = original.copy(
             name = item.name.trim(),
+            note = item.note,
             quantity = item.quantity,
             order = item.order,
             done = false,
@@ -489,6 +493,7 @@ class MainViewModelA(app: Application) : AndroidViewModel(app) {
         shoppingCategories = emptyList()
         shoppingItems = emptyList()
         showLogoutDialog = false
+        isLoadingState.value = false
         viewModelScope.launch {
             sendUiEvent(UiEvent.ShowSnackbar("${MainStrings.GOODBYE}, $userName"))
         }
