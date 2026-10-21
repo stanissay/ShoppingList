@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.input.KeyboardActionHandler
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.byValue
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,13 +58,16 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
@@ -384,6 +388,39 @@ fun MainText(
         textDecoration = textDecoration,
         fontSize = fontSize
     )
+}
+
+@Composable
+fun SelectionText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    fontSize: TextUnit = style.fontSize,
+    color: Color = MaterialTheme.colorScheme.onBackground
+) {
+    val annotatedText = buildAnnotatedString {
+        val urlRegex = Regex("""https?://[^\s]+""")
+        var lastIndex = 0
+
+        urlRegex.findAll(text).forEach { match ->
+            append(text.substring(lastIndex, match.range.first))
+            withLink(LinkAnnotation.Url(match.value)) { append(match.value) }
+            lastIndex = match.range.last + 1
+        }
+
+        append(text.substring(lastIndex))
+    }
+
+    SelectionContainer(modifier = modifier) {
+        MainText(
+            text = annotatedText,
+            style = style,
+            textAlign = TextAlign.Start,
+            color = color,
+            maxLines = Int.MAX_VALUE,
+            fontSize = fontSize
+        )
+    }
 }
 
 @Composable

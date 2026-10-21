@@ -128,6 +128,7 @@ import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
 import stanissay.shopping.list.utils.PlusBtn
+import stanissay.shopping.list.utils.SelectionText
 import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.UiEvent
 import stanissay.shopping.list.utils.VerticalScrollBar
@@ -743,12 +744,11 @@ fun ShoppingListItem(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (item.note.isNotBlank()) {
-                                MainText(
+                                SelectionText(
                                     modifier = Modifier.weight(1f).heightIn(min = Constants.BASE_SIZE, max = Constants.BASE_SIZE_L)
                                         .padding(PaddingStyle.xl)
                                         .verticalScroll(rememberScrollState()),
-                                    text = item.note,
-                                    textAlign = TextAlign.Start,
+                                    text = item.note
                                 )
                             } else Spacer(modifier = Modifier.weight(1f).height(Constants.BASE_SIZE))
                             Row(
