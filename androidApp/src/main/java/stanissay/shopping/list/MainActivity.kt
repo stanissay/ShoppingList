@@ -766,7 +766,7 @@ fun ShoppingListItem(
                 if (item.done) {
                     val endPadding by animateDpAsState(
                         targetValue = if (isExpanded) {
-                            Constants.BUTTON_SIZE_S * 3 + MainConstants.LINE * 4
+                            Constants.BUTTON_SIZE_S * 2 + Constants.BASE_SIZE + MainConstants.LINE * 4
                         } else MainConstants.LINE * 4,
                         animationSpec = tween(MainConstants.ANIMATION_MS),
                         label = "endPadding"
