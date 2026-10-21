@@ -229,7 +229,7 @@ fun TextDropdownMenu(
         onDismissRequest = onDismissRequest,
         modifier = modifier.width(Constants.DROPDOWN),
         properties = PopupProperties(focusable = false),
-        tonalElevation = MainConstants.ELEVATION,
+        tonalElevation = MainConstants.NULL,
         shadowElevation = MainConstants.ELEVATION,
         containerColor = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium,

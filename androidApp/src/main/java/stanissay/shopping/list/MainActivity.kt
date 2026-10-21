@@ -86,12 +86,9 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -709,16 +706,16 @@ fun ShoppingListItem(
                                     }
                                 }
 
-                                MainText(
-                                    text = buildAnnotatedString {
-                                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) {
-                                            append(it)
-                                        }
-                                    },
-                                    textAlign = TextAlign.Start,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    modifier = Modifier.padding(PaddingStyle.horizontalS)
-                                )
+                                Box(
+                                    modifier = Modifier.width(Constants.BASE_SIZE),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    MainText(
+                                        text = it,
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
+                                }
 
                                 Box(
                                     modifier = Modifier.width(Constants.BUTTON_SIZE_S),
@@ -759,6 +756,7 @@ fun ShoppingListItem(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 EditBtn { onEdit() }
+                                Spacer(modifier = Modifier.size(Constants.BASE_SIZE))
                                 DeleteBtn { onDelete() }
                             }
                         }
