@@ -15,7 +15,7 @@ android {
         minSdk = 34
         targetSdk = 37
         versionCode = 1
-        versionName = "1.3"
+        versionName = rootProject.extra["versionApps"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -56,4 +56,6 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
 }

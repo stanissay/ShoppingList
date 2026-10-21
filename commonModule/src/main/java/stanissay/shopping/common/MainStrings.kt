@@ -3,6 +3,7 @@ package stanissay.shopping.common
 object MainStrings {
     const val SHOPPING_LIST = "Список покупок"
     const val VERSION = "Версія"
+    const val WATCH = "Годинник"
     const val HELLO = "Привіт"
     const val GOODBYE = "Бувай"
     const val LOGIN = "Увійти"

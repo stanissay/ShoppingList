@@ -1,5 +1,8 @@
 @file:Suppress("UnstableApiUsage")
 
+include(":wearApp")
+
+
 pluginManagement {
     repositories {
         gradlePluginPortal()

@@ -84,7 +84,12 @@ fun MainTheme(content: @Composable () -> Unit) {
         colorScheme = ColorStyle,
         typography = TypographyStyle,
         shapes = ShapesStyle
-    ) { content() }
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) { content() }
+    }
 }
 
 @Composable
@@ -378,7 +383,7 @@ fun MainText(
     textDecoration: TextDecoration = TextDecoration.None
 ) {
     MainText(
-        text = androidx.compose.ui.text.AnnotatedString(text),
+        text = AnnotatedString(text),
         modifier = modifier,
         style = style,
         textAlign = textAlign,
