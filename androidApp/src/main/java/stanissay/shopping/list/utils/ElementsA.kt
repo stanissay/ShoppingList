@@ -424,6 +424,20 @@ fun SelectionText(
 }
 
 @Composable
+fun CaptionText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelMedium,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@Composable
 fun PageTitle(
     text: String,
     modifier: Modifier = Modifier
@@ -432,7 +446,7 @@ fun PageTitle(
         text = text,
         modifier = modifier,
         style = MaterialTheme.typography.displayMedium,
-        textAlign = TextAlign.Start,
+        textAlign = TextAlign.Center,
         color = MaterialTheme.colorScheme.primary
     )
 }

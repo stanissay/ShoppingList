@@ -108,6 +108,7 @@ import stanissay.shopping.common.ShoppingCategory
 import stanissay.shopping.common.ShoppingItem
 import stanissay.shopping.list.utils.AddBtn
 import stanissay.shopping.list.utils.AppEventManager
+import stanissay.shopping.list.utils.CaptionText
 import stanissay.shopping.list.utils.CheckBtn
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
@@ -167,10 +168,12 @@ fun MainList(viewModel: MainViewModelA) {
     val clipboard = LocalClipboard.current
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0"
     val snackbarHostState = remember { SnackbarHostState() }
     val categories = viewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val activeCategory = categories.getOrNull(pagerState.currentPage)
+    var versionExpanded by remember { mutableStateOf(false) }
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
             viewModel.moveCategory(from.index, to.index)
@@ -230,8 +233,22 @@ fun MainList(viewModel: MainViewModelA) {
                     actionIconContentColor = MaterialTheme.colorScheme.secondary,
                     subtitleContentColor = MaterialTheme.colorScheme.onBackground
                 ),
-                title = { PageTitle(MainStrings.SHOPPING_LIST) },
+                title = {
+                    ClickableBox(
+                        onLongClick = { versionExpanded = !versionExpanded }
+                    ) { PageTitle(MainStrings.SHOPPING_LIST) }
+                },
                 actions = {
+                    AnimatedVisibility(
+                        visible = versionExpanded,
+                        enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                        exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                    ) {
+                        CaptionText(
+                            modifier = Modifier.padding(PaddingStyle.horizontalS),
+                            text = "${MainStrings.VERSION} $versionName"
+                        )
+                    }
                     if(viewModel.shoppingCategories.isNotEmpty()) {
                         PasteBtn {
                             scope.launch {
