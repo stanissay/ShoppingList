@@ -36,7 +36,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":commonModule"))
+    implementation(project(":shared"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

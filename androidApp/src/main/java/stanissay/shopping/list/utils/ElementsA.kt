@@ -74,9 +74,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
-import stanissay.shopping.common.MainColors
-import stanissay.shopping.common.MainConstants
-import stanissay.shopping.common.PaddingStyle
+import stanissay.shopping.shared.MainColors
+import stanissay.shopping.shared.MainConstants
+import stanissay.shopping.shared.PaddingStyle
 
 @Composable
 fun MainTheme(content: @Composable () -> Unit) {
@@ -404,7 +404,7 @@ fun SelectionText(
     color: Color = MaterialTheme.colorScheme.onBackground
 ) {
     val annotatedText = buildAnnotatedString {
-        val urlRegex = Regex("""https?://[^\s]+""")
+        val urlRegex = Regex("""https?://\S+""")
         var lastIndex = 0
 
         urlRegex.findAll(text).forEach { match ->

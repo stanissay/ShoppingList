@@ -9,7 +9,7 @@ import androidx.wear.compose.foundation.CurvedTextStyle
 import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.Shapes
 import androidx.wear.compose.material3.Typography
-import stanissay.shopping.common.MainColors
+import stanissay.shopping.shared.MainColors
 
 val ColorStyle = ColorScheme(
     primary = MainColors.FIRST_ACCENT,

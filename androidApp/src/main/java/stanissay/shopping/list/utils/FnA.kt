@@ -1,38 +1,23 @@
 package stanissay.shopping.list.utils
 
-import android.content.Context
-import android.widget.Toast
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
+import android.app.Application
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import stanissay.shopping.list.MainViewModelA
+import stanissay.shopping.shared.StringProvider
 
-sealed class UiEvent {
-    data class ShowToast(val message: String) : UiEvent()
-    data class ShowSnackbar(val message: String) : UiEvent()
-}
+class MainViewModelFactory(
+    private val app: Application,
+    private val strings: StringProvider
+) : ViewModelProvider.Factory {
 
-object AppEventManager {
-    private val managerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private val _uiEvents = MutableSharedFlow<UiEvent>(
-        replay = 1,
-        extraBufferCapacity = 64
-    )
-    val uiEvents = _uiEvents.asSharedFlow()
-
-    fun sendEvent(event: UiEvent) {
-        managerScope.launch {
-            _uiEvents.emit(event)
+    override fun <T : ViewModel> create(
+        modelClass: Class<T>
+    ): T {
+        if (modelClass.isAssignableFrom(MainViewModelA::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MainViewModelA(app, strings) as T
         }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    fun resetReplayCache() {
-        _uiEvents.resetReplayCache()
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
-
-fun showCustomToast(text: String, context: Context) { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }

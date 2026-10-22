@@ -1,8 +1,5 @@
 @file:Suppress("UnstableApiUsage")
 
-include(":wearApp")
-
-
 pluginManagement {
     repositories {
         gradlePluginPortal()
@@ -28,4 +25,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ShoppingList"
-include(":androidApp", ":commonModule")
+include(":androidApp", ":wearApp", ":shared")

@@ -20,10 +20,10 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import stanissay.shopping.common.MainColors
-import stanissay.shopping.common.MainStrings
-import stanissay.shopping.list.R
+import stanissay.shopping.shared.MainColors
+import stanissay.shopping.shared.R
 
 @Composable
 fun BaseButton(
@@ -116,7 +116,7 @@ fun AddBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
     tint: Color = MaterialTheme.colorScheme.primary,
-    description: String = MainStrings.ADD,
+    description: String = stringResource(R.string.add),
     onClick: () -> Unit,
     onLongClick: () -> Unit = {}
 ) {
@@ -147,7 +147,7 @@ fun PasteBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
     tint: Color = MaterialTheme.colorScheme.secondary,
-    description: String = MainStrings.PASTE,
+    description: String = stringResource(R.string.insert),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.paste_btn)
@@ -166,7 +166,7 @@ fun PasteBtn(
 fun GoogleBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
-    description: String = MainStrings.LOGIN,
+    description: String = stringResource(R.string.login),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.google)
@@ -185,7 +185,7 @@ fun PlusBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MaterialTheme.colorScheme.primary,
-    description: String = MainStrings.PLUS,
+    description: String = stringResource(R.string.plus),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.plus_btn)
@@ -205,7 +205,7 @@ fun MinusBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MaterialTheme.colorScheme.primary,
-    description: String = MainStrings.MINUS,
+    description: String = stringResource(R.string.minus),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.minus_btn)
@@ -225,7 +225,7 @@ fun DoneBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
     tint: Color = MainColors.POSITIVE,
-    description: String = MainStrings.DONE,
+    description: String = stringResource(R.string.done),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.done_btn)
@@ -245,7 +245,7 @@ fun CloseBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
     tint: Color = MainColors.NEGATIVE,
-    description: String = MainStrings.CLOSE,
+    description: String = stringResource(R.string.close),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.close_btn)
@@ -265,7 +265,7 @@ fun EditBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MaterialTheme.colorScheme.secondary,
-    description: String = MainStrings.EDIT,
+    description: String = stringResource(R.string.edit),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.edit_btn)
@@ -285,7 +285,7 @@ fun DeleteBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE_S,
     tint: Color = MainColors.NEGATIVE,
-    description: String = MainStrings.DELETE,
+    description: String = stringResource(R.string.delete),
     onClick: () -> Unit
 ) {
     val img = painterResource(id = R.drawable.delete_btn)
@@ -308,7 +308,7 @@ fun CheckBtn(
     onClick: () -> Unit,
 ) {
     val img =  painterResource(id = if(checked) R.drawable.check_btn else R.drawable.box_btn)
-    val description = if(checked) MainStrings.NOT_PURCHASED else MainStrings.PURCHASED
+    val description = if(checked) stringResource(R.string.not_purchased) else stringResource(R.string.purchased)
     val tint = if(checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary
 
     BaseButton(
@@ -332,7 +332,7 @@ fun WatchBtn(
 
     BaseButton(
         painter = img,
-        description = MainStrings.WATCH,
+        description = stringResource(R.string.watch),
         modifier = modifier,
         size = size,
         tint = tint,

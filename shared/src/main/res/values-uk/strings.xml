@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Список покупок</string>
+    <string name="version">Версія</string>
+    <string name="error">Помилка</string>
+    <string name="watch">Годинник</string>
+    <string name="hello">Привіт</string>
+    <string name="goodbye">Бувай</string>
+    <string name="login">Увійти</string>
+    <string name="logout">Вийти</string>
+    <string name="add">Додати</string>
+    <string name="add_item">Додати товар</string>
+    <string name="add_category">Додати категорію</string>
+    <string name="insert">Вставити</string>
+    <string name="edit">Редагувати</string>
+    <string name="delete">Видалити</string>
+    <string name="purchased">Куплено</string>
+    <string name="not_purchased">Не куплено</string>
+    <string name="done">Підтвердити</string>
+    <string name="close">Закрити</string>
+    <string name="name">Назва</string>
+    <string name="note">Примітка</string>
+    <string name="no_name">Введіть назву</string>
+    <string name="plus">Плюс</string>
+    <string name="minus">Мінус</string>
+    <string name="buy">Купити</string>
+    <string name="category">Категорія</string>
+    <string name="duplicate_category">Категорія вже існує</string>
+</resources>

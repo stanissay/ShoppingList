@@ -2,7 +2,7 @@ package stanissay.shopping.list.utils
 
 import android.content.Context
 import android.content.res.Configuration
-import stanissay.shopping.common.DeviceType
+import stanissay.shopping.shared.DeviceType
 
 object DeviceInfo {
     lateinit var deviceType: DeviceType

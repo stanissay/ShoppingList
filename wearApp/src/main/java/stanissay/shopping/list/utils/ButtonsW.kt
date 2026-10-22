@@ -14,11 +14,11 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ripple
-import stanissay.shopping.common.MainStrings
-import stanissay.shopping.list.R
+import stanissay.shopping.shared.R
 
 @Composable
 fun BaseButton(
@@ -107,6 +107,24 @@ fun BaseButton(
 }
 
 @Composable
+fun GoogleBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    description: String = stringResource(R.string.login),
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.google)
+
+    Image(
+        painter = img,
+        contentDescription = description,
+        modifier = modifier
+            .size(size)
+            .clickable(onClick = onClick)
+    )
+}
+
+@Composable
 fun CheckBtn(
     modifier: Modifier = Modifier,
     size: Dp = Constants.BUTTON_SIZE,
@@ -114,7 +132,7 @@ fun CheckBtn(
     onClick: () -> Unit,
 ) {
     val img =  painterResource(id = if(checked) R.drawable.check_btn else R.drawable.box_btn)
-    val description = if(checked) MainStrings.NOT_PURCHASED else MainStrings.PURCHASED
+    val description = if(checked) stringResource(R.string.not_purchased) else stringResource(R.string.purchased)
     val tint = if(checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary
 
     BaseButton(

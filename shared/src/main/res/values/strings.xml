@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Shopping List</string>
+    <string name="version">Version</string>
+    <string name="error">Error</string>
+    <string name="watch">Watch</string>
+    <string name="hello">Hello</string>
+    <string name="goodbye">Goodbye</string>
+    <string name="login">Sign in</string>
+    <string name="logout">Sign out</string>
+    <string name="add">Add</string>
+    <string name="add_item">Add Item</string>
+    <string name="add_category">Add Category</string>
+    <string name="insert">Insert</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="purchased">Purchased</string>
+    <string name="not_purchased">Not Purchased</string>
+    <string name="done">Confirm</string>
+    <string name="close">Close</string>
+    <string name="name">Name</string>
+    <string name="note">Note</string>
+    <string name="no_name">Enter a name</string>
+    <string name="plus">Plus</string>
+    <string name="minus">Minus</string>
+    <string name="buy">Buy</string>
+    <string name="category">Category</string>
+    <string name="duplicate_category">Category already exists</string>
+
+    <string name="null_str" translatable="false">0</string>
+</resources>

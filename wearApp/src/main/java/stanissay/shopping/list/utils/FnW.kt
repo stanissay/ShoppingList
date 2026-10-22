@@ -1,15 +1,18 @@
 package stanissay.shopping.list.utils
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.material3.lazy.TransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-
-fun showCustomToast(text: String, context: Context) { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }
+import stanissay.shopping.list.MainViewModelW
+import stanissay.shopping.shared.StringProvider
 
 @SuppressLint("ModifierFactoryExtensionFunction")
 fun TransformingLazyColumnItemScope.transformedItem(
@@ -22,3 +25,19 @@ fun TransformingLazyColumnItemScope.transformedItem(
                 applyContainerTransformation(scrollProgress)
             }
         }
+
+class MainViewModelFactory(
+    private val app: Application,
+    private val strings: StringProvider
+) : ViewModelProvider.Factory {
+
+    override fun <T : ViewModel> create(
+        modelClass: Class<T>
+    ): T {
+        if (modelClass.isAssignableFrom(MainViewModelW::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return MainViewModelW(app, strings) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}

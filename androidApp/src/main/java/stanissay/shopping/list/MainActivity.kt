@@ -86,6 +86,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -100,14 +101,7 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
-import stanissay.shopping.common.MainColors
-import stanissay.shopping.common.MainConstants
-import stanissay.shopping.common.MainStrings
-import stanissay.shopping.common.PaddingStyle
-import stanissay.shopping.common.ShoppingCategory
-import stanissay.shopping.common.ShoppingItem
 import stanissay.shopping.list.utils.AddBtn
-import stanissay.shopping.list.utils.AppEventManager
 import stanissay.shopping.list.utils.CaptionText
 import stanissay.shopping.list.utils.CheckBtn
 import stanissay.shopping.list.utils.CircularBar
@@ -125,25 +119,37 @@ import stanissay.shopping.list.utils.MainLines
 import stanissay.shopping.list.utils.MainText
 import stanissay.shopping.list.utils.MainTextField
 import stanissay.shopping.list.utils.MainTheme
+import stanissay.shopping.list.utils.MainViewModelFactory
 import stanissay.shopping.list.utils.MinusBtn
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.PasteBtn
 import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.SelectionText
 import stanissay.shopping.list.utils.TextDropdownMenu
-import stanissay.shopping.list.utils.UiEvent
 import stanissay.shopping.list.utils.VerticalScrollBar
-import stanissay.shopping.list.utils.showCustomToast
+import stanissay.shopping.shared.AndroidStringProvider
+import stanissay.shopping.shared.AppEventManager
+import stanissay.shopping.shared.GoogleAuth
+import stanissay.shopping.shared.MainColors
+import stanissay.shopping.shared.MainConstants
+import stanissay.shopping.shared.PaddingStyle
+import stanissay.shopping.shared.R
+import stanissay.shopping.shared.ShoppingCategory
+import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.UiEvent
+import stanissay.shopping.shared.showCustomToast
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: MainViewModelA by viewModels()
+    private val viewModel: MainViewModelA by viewModels {
+        MainViewModelFactory(application, AndroidStringProvider(applicationContext))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val isLoading by viewModel.isLoading.collectAsState()
+            val isLoading by viewModel.sharedViewModel.isLoading.collectAsState()
             MainTheme {
                 Box(
                     modifier = Modifier
@@ -170,13 +176,13 @@ fun MainList(viewModel: MainViewModelA) {
     val scope = rememberCoroutineScope()
     val versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0"
     val snackbarHostState = remember { SnackbarHostState() }
-    val categories = viewModel.shoppingCategories.sortedBy { it.order }
+    val categories = viewModel.sharedViewModel.shoppingCategories.sortedBy { it.order }
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val activeCategory = categories.getOrNull(pagerState.currentPage)
     var versionExpanded by remember { mutableStateOf(false) }
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            viewModel.moveCategory(from.index, to.index)
+            viewModel.sharedViewModel.moveCategory(from.index, to.index)
         },
         onDragEnd = { _, to ->
             scope.launch {
@@ -236,7 +242,7 @@ fun MainList(viewModel: MainViewModelA) {
                 title = {
                     ClickableBox(
                         onLongClick = { versionExpanded = !versionExpanded }
-                    ) { PageTitle(MainStrings.SHOPPING_LIST) }
+                    ) { PageTitle(stringResource(R.string.app_name)) }
                 },
                 actions = {
                     AnimatedVisibility(
@@ -246,27 +252,23 @@ fun MainList(viewModel: MainViewModelA) {
                     ) {
                         CaptionText(
                             modifier = Modifier.padding(PaddingStyle.horizontalS),
-                            text = "${MainStrings.VERSION} $versionName"
+                            text = "${stringResource(R.string.version)} $versionName"
                         )
                     }
-                    if(viewModel.shoppingCategories.isNotEmpty()) {
+                    if(viewModel.sharedViewModel.shoppingCategories.isNotEmpty()) {
                         PasteBtn {
                             scope.launch {
                                 val text = clipboard.getClipEntry()?.clipData?.getItemAt(0)?.text?.toString()
-                                if (!text.isNullOrBlank()) viewModel.pasteItems(text, activeCategory?.id)
+                                if (!text.isNullOrBlank()) viewModel.sharedViewModel.pasteItems(text, activeCategory?.id)
                             }
                         }
                     }
-                    if(!viewModel.isLoggedIn) {
+                    if(!viewModel.sharedViewModel.isLoggedIn) {
                         GoogleBtn {
                             scope.launch {
                                 val result = GoogleAuth(activity).signIn()
                                 result.onSuccess {
-                                    snackbarHostState.showSnackbar(
-                                        message = "${MainStrings.HELLO}, ${viewModel.userName}",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                    viewModel.loadAll()
+                                    viewModel.login()
                                 }.onFailure { error ->
                                     snackbarHostState.showSnackbar(
                                         message = error.message.toString(),
@@ -277,24 +279,24 @@ fun MainList(viewModel: MainViewModelA) {
                         }
                     } else {
                         AsyncImage(
-                            model = viewModel.userPhotoUrl,
-                            contentDescription = viewModel.userName,
+                            model = viewModel.sharedViewModel.userPhotoUrl,
+                            contentDescription = viewModel.sharedViewModel.userName,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.size(Constants.BUTTON_SIZE)
                                 .clip(CircleShape)
-                                .clickable(onClick = { viewModel.showLogoutDialog = true })
+                                .clickable(onClick = { viewModel.sharedViewModel.showLogoutDialog = true })
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
-            if(viewModel.isLoggedIn) {
+            if(viewModel.sharedViewModel.isLoggedIn) {
                 var dropdownExpanded by remember { mutableStateOf(false) }
                 AddBtn(
                     onClick = {
-                        if (viewModel.shoppingCategories.isNotEmpty()) {
-                            viewModel.showNewItemDialog()
+                        if (viewModel.sharedViewModel.shoppingCategories.isNotEmpty()) {
+                            viewModel.sharedViewModel.showNewItemDialog()
                         } else dropdownExpanded = true
                     },
                     onLongClick = { dropdownExpanded = true }
@@ -303,13 +305,13 @@ fun MainList(viewModel: MainViewModelA) {
                     expanded = dropdownExpanded,
                     onDismissRequest = { dropdownExpanded = false },
                     items =
-                        if (viewModel.shoppingCategories.isNotEmpty()) {
-                            listOf(MainStrings.ADD_ELEMENT, MainStrings.ADD_CATEGORY)
-                        } else listOf(MainStrings.ADD_CATEGORY),
+                        if (viewModel.sharedViewModel.shoppingCategories.isNotEmpty()) {
+                            listOf(stringResource(R.string.add_item), stringResource(R.string.add_category))
+                        } else listOf(stringResource(R.string.add_category)),
                     onItemClick = {
                         when (it) {
-                            MainStrings.ADD_ELEMENT -> viewModel.showNewItemDialog()
-                            MainStrings.ADD_CATEGORY -> viewModel.showNewCategoryDialog()
+                            viewModel.strings.getString(R.string.add_item) -> viewModel.sharedViewModel.showNewItemDialog()
+                            viewModel.strings.getString(R.string.add_category) -> viewModel.sharedViewModel.showNewCategoryDialog()
                         }
                     }
                 )
@@ -346,7 +348,7 @@ fun MainList(viewModel: MainViewModelA) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         categories.forEachIndexed { index, category ->
-                            val listSize = viewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }.size.toString()
+                            val listSize = viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }.size.toString()
                             item(key = category.id) {
                                 ReorderableItem(
                                     state = reorderState,
@@ -365,16 +367,10 @@ fun MainList(viewModel: MainViewModelA) {
                                             .detectReorderAfterLongPress(reorderState),
                                         onClick = {
                                             scope.launch {
-                                                pagerState.animateScrollToPage(
-                                                    index
-                                                )
+                                                pagerState.animateScrollToPage(index)
                                             }
                                         },
-                                        onDoubleClick = {
-                                            viewModel.showEditCategoryDialog(
-                                                category
-                                            )
-                                        }
+                                        onDoubleClick = { viewModel.sharedViewModel.showEditCategoryDialog(category) }
                                     ) {
                                         Column(
                                             modifier = Modifier.fillMaxSize(),
@@ -425,21 +421,21 @@ fun MainList(viewModel: MainViewModelA) {
         }
     }
 
-    if(viewModel.showItemDialog) ItemDialog(viewModel, activeCategory?.id) { viewModel.hideItemDialog() }
-    if(viewModel.showCategoryDialog) CategoryDialog(viewModel) { viewModel.hideCategoryDialog() }
-    if(viewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.showLogoutDialog = false }
+    if(viewModel.sharedViewModel.showItemDialog) ItemDialog(viewModel, activeCategory?.id) { viewModel.sharedViewModel.hideItemDialog() }
+    if(viewModel.sharedViewModel.showCategoryDialog) CategoryDialog(viewModel) { viewModel.sharedViewModel.hideCategoryDialog() }
+    if(viewModel.sharedViewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.sharedViewModel.showLogoutDialog = false }
 }
 
 @Composable
 fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     val haptic = LocalHapticFeedback.current
-    val items = viewModel.shoppingItems.filter { it.categoryId == categoryId }
+    val items = viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == categoryId }
     var swipedItemId by remember { mutableStateOf<String?>(null) }
     val firstDoneIndex = items.indexOfFirst { it.done }
     val currentItems by rememberUpdatedState(items)
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
-            viewModel.moveItem(categoryId, from.index, to.index)
+            viewModel.sharedViewModel.moveItem(categoryId, from.index, to.index)
         },
         onDragEnd = { _, _ ->
             viewModel.updateItemsOrder()
@@ -459,7 +455,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
             .clickable(
                 interactionSource = null,
                 indication = null
-            ) { viewModel.toggleItemExpanded(null) }
+            ) { viewModel.sharedViewModel.toggleItemExpanded(null) }
     ) {
         LazyColumn(
             state = reorderState.listState,
@@ -487,12 +483,12 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                                     .padding(PaddingStyle.verticalXs)
                                     .detectReorderAfterLongPress(reorderState)
                                     .shadow(if (isDragging) MainConstants.ELEVATION else MainConstants.NULL),
-                                isExpanded = viewModel.expandedItemId == item.id,
-                                onExpand = { viewModel.toggleItemExpanded(item) },
-                                onEdit = { viewModel.showEditItemDialog(item) },
-                                onDelete = { viewModel.deleteItem(item) },
-                                onCheck = { viewModel.toggleItemDone(item) },
-                                onQuantity = { viewModel.updateQuantity(item, it) },
+                                isExpanded = viewModel.sharedViewModel.expandedItemId == item.id,
+                                onExpand = { viewModel.sharedViewModel.toggleItemExpanded(item) },
+                                onEdit = { viewModel.sharedViewModel.showEditItemDialog(item) },
+                                onDelete = { viewModel.sharedViewModel.deleteItem(item) },
+                                onCheck = { viewModel.sharedViewModel.toggleItemDone(item) },
+                                onQuantity = { viewModel.sharedViewModel.updateQuantity(item, it) },
                                 isSwiped = swipedItemId == item.id,
                                 onSwipe = { swipedItemId = item.id },
                                 onSwipeClosed = { swipedItemId = null }
@@ -899,7 +895,7 @@ fun ShoppingListItem(
 @Composable
 fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val item = viewModel.editItem
+    val item = viewModel.sharedViewModel.editItem
     val name by remember { mutableStateOf(TextFieldState(item?.name ?: "")) }
     val quantity by remember { mutableStateOf(TextFieldState(item?.quantity ?: "1")) }
     val note by remember { mutableStateOf(TextFieldState(item?.note ?: "")) }
@@ -930,7 +926,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
 
         if (name.text.isNotBlank()) {
             delay(300.milliseconds)
-            suggestions = viewModel.getNameSuggestions(name.text.toString())
+            suggestions = viewModel.sharedViewModel.getNameSuggestions(name.text.toString())
             dropdownExpanded = suggestions.isNotEmpty()
         }
     }
@@ -944,7 +940,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                 Box(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
-                ) { DialogTitle(MainStrings.BUY) }
+                ) { DialogTitle(stringResource(R.string.buy)) }
                 Row(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
@@ -955,7 +951,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     ) {
                         MainTextField(
                             state = name,
-                            placeholderText = MainStrings.NAME,
+                            placeholderText = stringResource(R.string.name),
                             focusRequester = focusRequesterName,
                             imeAction = ImeAction.Next,
                             onKeyboardAction = {
@@ -978,7 +974,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     MainTextField(
                         modifier = Modifier.width(Constants.BASE_SIZE_L),
                         state = quantity,
-                        placeholderText = MainStrings.NULL,
+                        placeholderText = stringResource(R.string.null_str),
                         focusRequester = focusRequesterQuantity,
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Done
@@ -993,7 +989,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     MainTextField(
                         modifier = Modifier.fillMaxSize(),
                         state = note,
-                        placeholderText = MainStrings.NOTE,
+                        placeholderText = stringResource(R.string.note),
                         keyboardType = KeyboardType.Text,
                         lineLimits = TextFieldLineLimits.Default,
                         textAlign = TextAlign.Start,
@@ -1008,7 +1004,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE))
                     DoneBtn {
                         if (name.text.toString().isBlank()) {
-                            showCustomToast(MainStrings.NO_NAME, context)
+                            showCustomToast(viewModel.strings.getString(R.string.no_name), context)
                             return@DoneBtn
                         }
                         val finalItem = ShoppingItem(
@@ -1018,7 +1014,7 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                             note = note.text.toString(),
                             order = item?.order ?: 0
                         )
-                        viewModel.editItem(finalItem, categoryId)
+                        viewModel.sharedViewModel.editItem(finalItem, categoryId)
 
                         if (item == null) {
                             name.clearText()
@@ -1036,8 +1032,8 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
 @Composable
 fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val category = viewModel.editCategory
-    val items = viewModel.shoppingItems.filter { it.id == category?.id }
+    val category = viewModel.sharedViewModel.editCategory
+    val items = viewModel.sharedViewModel.shoppingItems.filter { it.id == category?.id }
     val name by remember { mutableStateOf(TextFieldState(category?.name ?: "")) }
     val focusRequesterName = remember { FocusRequester() }
 
@@ -1058,9 +1054,9 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
-                    DialogTitle(MainStrings.CATEGORY)
-                    if(viewModel.shoppingCategories.size > 1 && category?.id != null && items.isEmpty()) {
-                        DeleteBtn { viewModel.deleteCategory(category.id) }
+                    DialogTitle(stringResource(R.string.category))
+                    if(viewModel.sharedViewModel.shoppingCategories.size > 1 && category?.id != null && items.isEmpty()) {
+                        DeleteBtn { viewModel.sharedViewModel.deleteCategory(category.id) }
                     } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                 }
                 Box(
@@ -1069,7 +1065,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 ) {
                     MainTextField(
                         state = name,
-                        placeholderText = MainStrings.NAME,
+                        placeholderText = stringResource(R.string.name),
                         focusRequester = focusRequesterName,
                         imeAction = ImeAction.Done
                     )
@@ -1082,7 +1078,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE))
                     DoneBtn {
                         if (name.text.toString().isBlank()) {
-                            showCustomToast(MainStrings.NO_NAME, context)
+                            showCustomToast(viewModel.strings.getString(R.string.no_name), context)
                             return@DoneBtn
                         }
                         val finalCategory = ShoppingCategory(
@@ -1090,7 +1086,7 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             name = name.text.toString(),
                             order = category?.order ?: 0
                         )
-                        viewModel.editCategory(finalCategory)
+                        viewModel.sharedViewModel.editCategory(finalCategory)
                     }
                 }
             }
@@ -1113,7 +1109,7 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 Box(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
-                ) { DialogTitle(MainStrings.LOGOUT) }
+                ) { DialogTitle(stringResource(R.string.logout)) }
                 Row(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,

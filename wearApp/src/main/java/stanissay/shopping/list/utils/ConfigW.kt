@@ -1,6 +1,6 @@
 package stanissay.shopping.list.utils
 
-import stanissay.shopping.common.DeviceType
+import stanissay.shopping.shared.DeviceType
 
 object DeviceInfo {
     lateinit var deviceType: DeviceType
