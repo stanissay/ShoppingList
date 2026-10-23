@@ -35,7 +35,7 @@ val ShapesStyle = Shapes(
 val TypographyStyle = Typography(
     arcMedium = CurvedTextStyle(
         fontFamily = FontFamily.Default,
-        fontSize = 8.sp
+        fontSize = 12.sp
     ),
 
     displayMedium = TextStyle(

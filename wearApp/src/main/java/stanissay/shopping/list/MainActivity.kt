@@ -64,8 +64,6 @@ import androidx.wear.ambient.AmbientLifecycleObserver
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.ButtonDefaults
-import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
@@ -256,25 +254,7 @@ fun MainScreen(viewModel: MainViewModelW) {
             }
         }
     ) {
-        ScreenScaffold(
-            scrollState = listState,
-            edgeButton = {
-                if(viewModel.sharedViewModel.isLoggedIn) {
-                    EdgeButton(
-                        onClick = {
-                            scope.launch {
-                                GoogleAuth(activity).signOut()
-                                viewModel.logout()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) { MainText(stringResource(R.string.logout)) }
-                }
-            },
-        ) { contentPadding ->
+        ScreenScaffold(scrollState = listState) { contentPadding ->
             TransformingLazyColumn(contentPadding = contentPadding, state = listState) {
                 item {
                     if(!viewModel.sharedViewModel.isLoggedIn) {
