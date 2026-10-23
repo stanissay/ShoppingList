@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ripple
+import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.R
 
 @Composable
@@ -121,6 +122,26 @@ fun GoogleBtn(
         modifier = modifier
             .size(size)
             .clickable(onClick = onClick)
+    )
+}
+
+@Composable
+fun DoneBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MainColors.POSITIVE,
+    description: String = stringResource(R.string.done),
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.done_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
     )
 }
 

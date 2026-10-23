@@ -1,5 +1,6 @@
 package stanissay.shopping.list.utils
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,11 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -32,6 +35,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.MaterialTheme
@@ -139,6 +143,36 @@ fun TransformingLazyColumnItemScope.MainCard(
                 shape = shape
             )
     ) { Box(modifier = Modifier.padding(contentPadding)) { content() } }
+}
+
+@Composable
+fun MainLines(modifier: Modifier) {
+    val cellSize = with(LocalDensity.current) { Constants.BASE_SIZE_S.toPx() }
+
+    Canvas(modifier = modifier) {
+        val columns = (size.width / cellSize).toInt() + 1
+        val rows = (size.height / cellSize).toInt() + 1
+
+        for (i in 0..columns) {
+            val x = cellSize / 2 +  i * cellSize
+            drawLine(
+                color = MainColors.THIN_BORDER.copy(alpha = 0.5f),
+                start = Offset(x, 0f),
+                end = Offset(x, size.height),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+
+        for (i in 0..rows) {
+            val y = cellSize / 2 + i * cellSize
+            drawLine(
+                color = MainColors.THIN_BORDER.copy(alpha = 0.5f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx()
+            )
+        }
+    }
 }
 
 @Composable

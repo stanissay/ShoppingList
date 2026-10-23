@@ -176,7 +176,7 @@ fun MainList(viewModel: MainViewModelA) {
     val scope = rememberCoroutineScope()
     val versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0"
     val snackbarHostState = remember { SnackbarHostState() }
-    val categories = viewModel.sharedViewModel.shoppingCategories.sortedBy { it.order }
+    val categories = viewModel.sharedViewModel.shoppingCategories
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val activeCategory = categories.getOrNull(pagerState.currentPage)
     var versionExpanded by remember { mutableStateOf(false) }
@@ -688,10 +688,10 @@ fun ShoppingListItem(
                                 exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
                             ) { CheckBtn(checked = item.done) { onCheck() } }
                         }
-                        Row(
+                        Box(
                             modifier = Modifier.weight(1f)
                                 .padding(PaddingStyle.horizontalS),
-                            verticalAlignment = Alignment.CenterVertically
+                            contentAlignment = Alignment.CenterStart
                         ) {
                             MainText(
                                 text = item.name,
