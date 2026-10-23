@@ -55,4 +55,6 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.androidx.wear.ongoing)
+    implementation(libs.androidx.core)
 }

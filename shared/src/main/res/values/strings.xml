@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Shopping List</string>
+    <string name="current_list">Current shopping list</string>
+    <string name="shopping">Shopping continues</string>
     <string name="version">Version</string>
     <string name="error">Error</string>
     <string name="watch">Watch</string>

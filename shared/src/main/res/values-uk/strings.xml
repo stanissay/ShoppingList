@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Список покупок</string>
+    <string name="current_list">"Поточний список покупок"</string>
+    <string name="shopping">Покупки тривають</string>
     <string name="version">Версія</string>
     <string name="error">Помилка</string>
     <string name="watch">Годинник</string>

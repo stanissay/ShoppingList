@@ -1,9 +1,12 @@
 package stanissay.shopping.list
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
@@ -47,6 +50,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -68,6 +73,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
+import stanissay.shopping.list.utils.ConfigW
 import stanissay.shopping.list.utils.Constants
 import stanissay.shopping.list.utils.DoneBtn
 import stanissay.shopping.list.utils.GoogleBtn
@@ -94,10 +100,17 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModelW by viewModels {
         MainViewModelFactory(application, AndroidStringProvider(applicationContext))
     }
+    private lateinit var ongoingActivityManager: OngoingManager
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) ongoingActivityManager.start()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        ongoingActivityManager = OngoingManager(this)
+        prepareOngoingActivity()
         setContent {
             MainTheme {
                 val context = LocalContext.current
@@ -147,6 +160,28 @@ class MainActivity : ComponentActivity() {
                     } else AmbientDisplay()
                 }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        if (isFinishing) ongoingActivityManager.stop()
+        super.onDestroy()
+    }
+
+    private fun prepareOngoingActivity() {
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            ongoingActivityManager.start()
+            return
+        }
+
+        val prefs = getSharedPreferences(ConfigW.APP_SETTINGS, MODE_PRIVATE)
+        val alreadyAsked = prefs.getBoolean(ConfigW.NOTIFICATIONS_PERMISSION_ASKED, false)
+
+        if (!alreadyAsked) {
+            prefs.edit { putBoolean(ConfigW.NOTIFICATIONS_PERMISSION_ASKED, true) }
+            notificationPermissionLauncher.launch(permission)
         }
     }
 }
