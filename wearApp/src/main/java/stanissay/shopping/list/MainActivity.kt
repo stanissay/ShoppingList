@@ -6,12 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -40,10 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -55,7 +51,6 @@ import androidx.wear.ambient.AmbientLifecycleObserver
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
-import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.ListHeader
@@ -83,9 +78,9 @@ import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.PaddingStyle
-import stanissay.shopping.shared.showCustomToast
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.showCustomToast
 import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
@@ -223,7 +218,13 @@ fun MainScreen(viewModel: MainViewModelW) {
                             modifier = Modifier.fillMaxWidth()
                                 .transformedHeight(this, transformationSpec),
                             transformation = SurfaceTransformation(transformationSpec),
-                        ) { PageTitle(text = category.name) }
+                        ) {
+                            MainText(
+                                text = category.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
                     items.forEach { item ->
@@ -301,11 +302,11 @@ fun ShoppingListItem(
     }
 
     Box(modifier = modifier.fillMaxWidth()) {
-        if (offsetX > 0f) {
+        if (offsetX < 0f) {
             ClickableBox(
                 modifier = Modifier.matchParentSize(),
                 background = MainColors.POSITIVE.copy(alpha = 0.5f),
-                contentAlignment = Alignment.CenterStart
+                contentAlignment = Alignment.CenterEnd
             ) {
                 DoneBtn(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
                     animateCheck { onCheck() }
@@ -321,8 +322,8 @@ fun ShoppingListItem(
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
                         offsetX = (offsetX + delta).coerceIn(
-                            0f,
-                            itemWidthPx
+                            -itemWidthPx,
+                            0f
                         )
                     },
                     onDragStarted = { dragStartOffset = offsetX },
@@ -333,12 +334,7 @@ fun ShoppingListItem(
                                 animateOffset(0f)
                             }
 
-                            dragStartOffset > 0f && offsetX < dragStartOffset -> {
-                                onSwipeClosed()
-                                animateOffset(0f)
-                            }
-
-                            offsetX >= itemWidthPx * 0.75f ->
+                            offsetX <= -itemWidthPx * 0.75f ->
                                 animateCheck {
                                     onSwipeClosed()
                                     onCheck()
@@ -347,11 +343,6 @@ fun ShoppingListItem(
                             offsetX < -revealWidthPx / 2f -> {
                                 onSwipe()
                                 animateOffset(-revealWidthPx)
-                            }
-
-                            offsetX > revealWidthPx / 2f -> {
-                                onSwipe()
-                                animateOffset(revealWidthPx)
                             }
 
                             else -> {
@@ -387,7 +378,6 @@ fun ShoppingListItem(
                         MainText(
                             text = item.name,
                             textAlign = TextAlign.Start,
-                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -398,7 +388,6 @@ fun ShoppingListItem(
                         item.quantity?.takeIf { it.isNotBlank() }?.let {
                             MainText(
                                 text = it,
-                                style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.secondary
                             )
                         }
