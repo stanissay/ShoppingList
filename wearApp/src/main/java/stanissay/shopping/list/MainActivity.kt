@@ -168,19 +168,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onDestroy() {
-        if (isFinishing) ongoingActivityManager.stop()
-        super.onDestroy()
-    }
-
     override fun onPause() {
-        if (isFinishing) ongoingActivityManager.stop()
+        ongoingActivityManager.stop()
         super.onPause()
-    }
-
-    override fun onStop() {
-        if (isFinishing) ongoingActivityManager.stop()
-        super.onStop()
     }
 
     private fun prepareOngoingActivity() {

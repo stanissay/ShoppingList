@@ -21,10 +21,11 @@ class OngoingManager(private val context: Context) {
     companion object {
         private val handler = Handler(Looper.getMainLooper())
         private var stopRunnable: Runnable? = null
-        private fun cancelScheduledStop() {
-            stopRunnable?.let(handler::removeCallbacks)
-            stopRunnable = null
-        }
+    }
+
+    fun cancelScheduledStop() {
+        stopRunnable?.let(handler::removeCallbacks)
+        stopRunnable = null
     }
 
     @SuppressLint("WearRecents")
