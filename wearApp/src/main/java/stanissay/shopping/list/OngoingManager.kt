@@ -1,6 +1,7 @@
 package stanissay.shopping.list
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -26,6 +27,7 @@ class OngoingManager(private val context: Context) {
         }
     }
 
+    @SuppressLint("WearRecents")
     fun start() {
         cancelScheduledStop()
 
@@ -35,7 +37,7 @@ class OngoingManager(private val context: Context) {
         createNotificationChannel()
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(context, 0, intent,

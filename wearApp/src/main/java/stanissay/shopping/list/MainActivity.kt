@@ -13,11 +13,14 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +53,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -73,8 +77,10 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
+import stanissay.shopping.list.utils.CloseBtn
 import stanissay.shopping.list.utils.ConfigW
 import stanissay.shopping.list.utils.Constants
+import stanissay.shopping.list.utils.DialogTitle
 import stanissay.shopping.list.utils.DoneBtn
 import stanissay.shopping.list.utils.GoogleBtn
 import stanissay.shopping.list.utils.MainCard
@@ -156,6 +162,7 @@ class MainActivity : ComponentActivity() {
                         Box(modifier = Modifier.fillMaxSize()) {
                             MainScreen(viewModel)
                             if(isLoading) CircularBar()
+                            if(viewModel.sharedViewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.sharedViewModel.showLogoutDialog = false }
                         }
                     } else AmbientDisplay()
                 }
@@ -166,6 +173,16 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         if (isFinishing) ongoingActivityManager.stop()
         super.onDestroy()
+    }
+
+    override fun onPause() {
+        if (isFinishing) ongoingActivityManager.stop()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        if (isFinishing) ongoingActivityManager.stop()
+        super.onStop()
     }
 
     private fun prepareOngoingActivity() {
@@ -280,6 +297,7 @@ fun MainScreen(viewModel: MainViewModelW) {
                             contentScale = ContentScale.Crop,
                             modifier = transformedItem(transformationSpec).size(Constants.BUTTON_SIZE)
                                 .clip(CircleShape)
+                                .clickable(onClick = { viewModel.sharedViewModel.showLogoutDialog = true })
                         )
                     }
                 }
@@ -510,6 +528,40 @@ fun ShoppingListItem(
                                 text = it,
                                 color = MaterialTheme.colorScheme.secondary
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LogoutDialog(viewModel: MainViewModelW, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val activity = context as Activity
+    val scope = rememberCoroutineScope()
+
+    Dialog(onDismissRequest = onDismiss) {
+        MainCard(borderColor = MaterialTheme.colorScheme.outline) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    contentAlignment = Alignment.Center
+                ) { DialogTitle(stringResource(R.string.logout)) }
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    CloseBtn { onDismiss() }
+                    DoneBtn {
+                        scope.launch {
+                            GoogleAuth(activity).signOut()
+                            viewModel.logout()
                         }
                     }
                 }

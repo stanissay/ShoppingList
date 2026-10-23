@@ -465,7 +465,7 @@ fun DialogTitle(
     MainText(
         text = text,
         modifier = modifier,
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.headlineMedium,
         color = MaterialTheme.colorScheme.primary,
         textAlign = textAlign
     )

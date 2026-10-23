@@ -276,3 +276,18 @@ fun PageTitle(
         color = MaterialTheme.colorScheme.primary
     )
 }
+
+@Composable
+fun DialogTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    MainText(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        textAlign = textAlign
+    )
+}

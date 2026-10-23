@@ -144,3 +144,23 @@ fun DoneBtn(
         onClick = onClick
     )
 }
+
+@Composable
+fun CloseBtn(
+    modifier: Modifier = Modifier,
+    size: Dp = Constants.BUTTON_SIZE,
+    tint: Color = MainColors.NEGATIVE,
+    description: String = stringResource(R.string.close),
+    onClick: () -> Unit
+) {
+    val img = painterResource(id = R.drawable.close_btn)
+
+    BaseButton(
+        painter = img,
+        description = description,
+        modifier = modifier,
+        size = size,
+        tint = tint,
+        onClick = onClick
+    )
+}
