@@ -10,12 +10,12 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,10 +37,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -63,7 +66,6 @@ import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.timeTextCurvedText
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
-import stanissay.shopping.list.utils.CheckBtn
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
 import stanissay.shopping.list.utils.Constants
@@ -77,12 +79,14 @@ import stanissay.shopping.list.utils.MainViewModelFactory
 import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.transformedItem
 import stanissay.shopping.shared.AndroidStringProvider
+import stanissay.shopping.shared.AppEventManager
 import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.PaddingStyle
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.UiEvent
 import stanissay.shopping.shared.showCustomToast
 import kotlin.math.roundToInt
 
@@ -158,6 +162,7 @@ fun AmbientDisplay() {
 
 @Composable
 fun MainScreen(viewModel: MainViewModelW) {
+    val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val activity = context as Activity
     val listState = rememberTransformingLazyColumnState()
@@ -169,6 +174,21 @@ fun MainScreen(viewModel: MainViewModelW) {
     val versionText = "${stringResource(R.string.version)} $versionName"
     val versionStyle = MaterialTheme.typography.arcMedium.copy(color = MaterialTheme.colorScheme.onSurface)
     var versionExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        AppEventManager.uiEvents.collect { event ->
+            when (event) {
+                is UiEvent.ShowToast -> {
+                    showCustomToast(event.message, context)
+                    AppEventManager.resetReplayCache()
+                }
+                is UiEvent.ShowSnackbar -> {
+                    showCustomToast(event.message, context)
+                    AppEventManager.resetReplayCache()
+                }
+            }
+        }
+    }
 
     AppScaffold(
         timeText = {
@@ -189,7 +209,12 @@ fun MainScreen(viewModel: MainViewModelW) {
             edgeButton = {
                 if(viewModel.sharedViewModel.isLoggedIn) {
                     EdgeButton(
-                        onClick = { viewModel.logout() },
+                        onClick = {
+                            scope.launch {
+                                GoogleAuth(activity).signOut()
+                                viewModel.logout()
+                            }
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -233,19 +258,11 @@ fun MainScreen(viewModel: MainViewModelW) {
                         ) { PageTitle(text = stringResource(R.string.app_name)) }
                     }
                 }
-                items(
-                    count = categories.size,
-                    key = { index ->
-                        categories[index].id
-                    }
-                ) { index ->
-                    val category = categories[index]
-                    val items = viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }
-
-                    this@TransformingLazyColumn.item {
+                categories.forEach { category ->
+                    item(key = category.id) {
                         Box(
                             modifier = transformedItem(transformationSpec).fillMaxWidth().height(Constants.BASE_SIZE)
-                                .padding(PaddingStyle.verticalXs),
+                                .padding(PaddingStyle.verticalXxs),
                             contentAlignment = Alignment.Center
                         ) {
                             MainText(
@@ -256,19 +273,23 @@ fun MainScreen(viewModel: MainViewModelW) {
                         }
                     }
 
-                    items.forEach { item ->
-                        this@TransformingLazyColumn.item {
-                            ShoppingListItem(
-                                modifier = transformedItem(transformationSpec)
-                                    .padding(PaddingStyle.verticalXs),
-                                item = item,
-                                onCheck = { viewModel.sharedViewModel.toggleItemDone(item) },
-                                isSwiped = swipedItemId == item.id,
-                                onSwipe = { swipedItemId = item.id },
-                                onSwipeClosed = { swipedItemId = null }
-                            )
+                    viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }
+                        .forEach { item ->
+                            item(key = item.id) {
+                                ShoppingListItem(
+                                    modifier = transformedItem(transformationSpec)
+                                        .padding(PaddingStyle.verticalXxs),
+                                    item = item,
+                                    onCheck = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                        viewModel.sharedViewModel.toggleItemDone(item)
+                                    },
+                                    isSwiped = swipedItemId == item.id,
+                                    onSwipe = { swipedItemId = item.id },
+                                    onSwipeClosed = { swipedItemId = null }
+                                )
+                            }
                         }
-                    }
                 }
             }
         }
@@ -348,16 +369,44 @@ fun ShoppingListItem(
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .onSizeChanged { itemWidthPx = it.width.toFloat() }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        offsetX = (offsetX + delta).coerceIn(
-                            -itemWidthPx,
-                            0f
-                        )
-                    },
-                    onDragStarted = { dragStartOffset = offsetX },
-                    onDragStopped = {
+                .pointerInput(item.id, itemWidthPx, isSwiped) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startX = down.position.x
+                        if (itemWidthPx <= 0f) return@awaitEachGesture
+                        val edge = itemWidthPx * 0.25f
+                        val openedAtStart = isSwiped || offsetX != 0f
+                        val startedFromRight = startX >= itemWidthPx - edge
+                        if (!openedAtStart && !startedFromRight) return@awaitEachGesture
+                        dragStartOffset = offsetX
+
+                        val firstDrag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                            val movingRight = over > 0f
+                            val allowed = openedAtStart
+                                    || (!movingRight)
+
+                            if (allowed) {
+                                change.consume()
+                                offsetX = (offsetX + over).coerceIn(-itemWidthPx, 0f)
+                            }
+                        }
+
+                        if (firstDrag == null) return@awaitEachGesture
+
+                        val completed = horizontalDrag(firstDrag.id) { change ->
+                            val delta = change.position.x - change.previousPosition.x
+
+                            offsetX = (offsetX + delta).coerceIn(-itemWidthPx, 0f)
+
+                            change.consume()
+                        }
+
+                        if (!completed) {
+                            onSwipeClosed()
+                            animateOffset(0f)
+                            return@awaitEachGesture
+                        }
+
                         when {
                             dragStartOffset < 0f && offsetX > dragStartOffset -> {
                                 onSwipeClosed()
@@ -376,12 +425,12 @@ fun ShoppingListItem(
                             }
 
                             else -> {
-                                onSwipe()
+                                onSwipeClosed()
                                 animateOffset(0f)
                             }
                         }
                     }
-                ),
+                },
             borderColor = MaterialTheme.colorScheme.outline
         ) {
             MainLines(modifier = Modifier.matchParentSize())
@@ -392,16 +441,22 @@ fun ShoppingListItem(
                             animateOffset(0f)
                         }
                     }
+                },
+                onLongClick = {
+                    if (offsetX != 0f) {
+                        scope.launch {
+                            animateOffset(0f)
+                        }
+                    } else onCheck()
                 }
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
-                        .padding(PaddingStyle.horizontalXl),
+                        .padding(PaddingStyle.horizontalXs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CheckBtn(checked = item.done) { onCheck() }
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxHeight()
+                        modifier = Modifier.weight(1f)
                             .padding(PaddingStyle.horizontalS),
                         contentAlignment = Alignment.CenterStart
                     ) {
@@ -411,11 +466,11 @@ fun ShoppingListItem(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    Box(
-                        modifier = Modifier.fillMaxHeight().width(Constants.BASE_SIZE),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        item.quantity?.takeIf { it.isNotBlank() }?.let {
+                    item.quantity?.takeIf { it.isNotBlank() }?.let {
+                        Box(
+                            modifier = Modifier.width(Constants.BASE_SIZE * 2),
+                            contentAlignment = Alignment.Center
+                        ) {
                             MainText(
                                 text = it,
                                 color = MaterialTheme.colorScheme.secondary
@@ -426,5 +481,4 @@ fun ShoppingListItem(
             }
         }
     }
-
 }

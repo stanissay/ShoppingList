@@ -80,7 +80,7 @@ fun CircularBar() {
 @Composable
 fun MainCard(
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    containerColor: Color = MaterialTheme.colorScheme.background,
     borderColor: Color = MainColors.TRANSPARENT,
     contentPadding: PaddingValues = PaddingStyle.none,
     containerPadding: PaddingValues = PaddingStyle.none,

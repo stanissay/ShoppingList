@@ -144,24 +144,3 @@ fun DoneBtn(
         onClick = onClick
     )
 }
-
-@Composable
-fun CheckBtn(
-    modifier: Modifier = Modifier,
-    size: Dp = Constants.BUTTON_SIZE,
-    checked: Boolean,
-    onClick: () -> Unit,
-) {
-    val img =  painterResource(id = if(checked) R.drawable.check_btn else R.drawable.box_btn)
-    val description = if(checked) stringResource(R.string.not_purchased) else stringResource(R.string.purchased)
-    val tint = if(checked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary
-
-    BaseButton(
-        painter = img,
-        description = description,
-        modifier = modifier,
-        size = size,
-        tint = tint,
-        onClick = onClick
-    )
-}

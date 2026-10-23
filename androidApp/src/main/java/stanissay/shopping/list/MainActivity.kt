@@ -19,9 +19,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,6 +81,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboard
@@ -486,8 +488,14 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                                 isExpanded = viewModel.sharedViewModel.expandedItemId == item.id,
                                 onExpand = { viewModel.sharedViewModel.toggleItemExpanded(item) },
                                 onEdit = { viewModel.sharedViewModel.showEditItemDialog(item) },
-                                onDelete = { viewModel.sharedViewModel.deleteItem(item) },
-                                onCheck = { viewModel.sharedViewModel.toggleItemDone(item) },
+                                onDelete = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    viewModel.sharedViewModel.deleteItem(item)
+                                },
+                                onCheck = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                    viewModel.sharedViewModel.toggleItemDone(item)
+                                },
                                 onQuantity = { viewModel.sharedViewModel.updateQuantity(item, it) },
                                 isSwiped = swipedItemId == item.id,
                                 onSwipe = { swipedItemId = item.id },
@@ -516,7 +524,6 @@ fun ShoppingListItem(
     onSwipe: () -> Unit,
     onSwipeClosed: () -> Unit
 ) {
-    val quantity = item.quantity?.toIntOrNull()
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val revealWidthPx = with(density) { (Constants.BASE_SIZE * 2).toPx() }
@@ -610,17 +617,57 @@ fun ShoppingListItem(
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
                 .onSizeChanged { itemWidthPx = it.width.toFloat() }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    enabled = !isExpanded,
-                    state = rememberDraggableState { delta ->
-                        offsetX = (offsetX + delta).coerceIn(
-                            -itemWidthPx,
-                            itemWidthPx
-                        )
-                    },
-                    onDragStarted = { dragStartOffset = offsetX },
-                    onDragStopped = {
+                .pointerInput(item.id, isExpanded, itemWidthPx, isSwiped) {
+                    if (isExpanded) return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startX = down.position.x
+                        if (itemWidthPx <= 0f) return@awaitEachGesture
+                        val edge = itemWidthPx * 0.25f
+                        val openedAtStart = isSwiped || offsetX != 0f
+                        val startedFromLeft = startX <= edge
+                        val startedFromRight = startX >= itemWidthPx - edge
+                        if (!openedAtStart && !startedFromLeft && !startedFromRight) return@awaitEachGesture
+                        dragStartOffset = offsetX
+
+                        val firstDrag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                            val movingRight = over > 0f
+                            val allowed = openedAtStart ||
+                                    (startedFromLeft && movingRight) ||
+                                    (startedFromRight && !movingRight)
+
+                            if (allowed) {
+                                change.consume()
+                                offsetX = (offsetX + over).coerceIn(
+                                    -itemWidthPx, itemWidthPx
+                                )
+                            }
+                        }
+
+                        if (firstDrag == null) return@awaitEachGesture
+
+                        val completed = horizontalDrag(firstDrag.id) { change ->
+                            val delta = change.position.x - change.previousPosition.x
+
+                            offsetX = when {
+                                dragStartOffset > 0f ->
+                                    (offsetX + delta).coerceIn(0f, itemWidthPx)
+
+                                dragStartOffset < 0f ->
+                                    (offsetX + delta).coerceIn(-itemWidthPx, 0f)
+
+                                else -> (offsetX + delta).coerceIn(-itemWidthPx, itemWidthPx)
+                            }
+
+                            change.consume()
+                        }
+
+                        if (!completed) {
+                            onSwipeClosed()
+                            animateOffset(0f)
+                            return@awaitEachGesture
+                        }
+
                         when {
                             dragStartOffset < 0f && offsetX > dragStartOffset -> {
                                 onSwipeClosed()
@@ -655,12 +702,12 @@ fun ShoppingListItem(
                             }
 
                             else -> {
-                                onSwipe()
+                                onSwipeClosed()
                                 animateOffset(0f)
                             }
                         }
                     }
-                ),
+                },
             borderColor = MaterialTheme.colorScheme.outline
         ) {
             MainLines(modifier = Modifier.matchParentSize())
@@ -678,16 +725,11 @@ fun ShoppingListItem(
                         modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier.width(Constants.BUTTON_SIZE_S),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = isExpanded,
-                                enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                                exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
-                            ) { CheckBtn(checked = item.done) { onCheck() } }
-                        }
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                            exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                        ) { CheckBtn(checked = item.done) { onCheck() } }
                         Box(
                             modifier = Modifier.weight(1f)
                                 .padding(PaddingStyle.horizontalS),
@@ -705,23 +747,23 @@ fun ShoppingListItem(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             item.quantity?.takeIf { it.isNotBlank() }?.let {
-                                Box(
-                                    modifier = Modifier.width(Constants.BUTTON_SIZE_S),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    androidx.compose.animation.AnimatedVisibility(
-                                        visible = isExpanded && quantity != null,
-                                        enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                                        exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                val quantity = it.toIntOrNull()
+                                quantity?.let { q ->
+                                    Box(
+                                        modifier = Modifier.width(Constants.BUTTON_SIZE_S),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        MinusBtn {
-                                            onQuantity((quantity!! - 1).coerceAtLeast(1))
-                                        }
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = isExpanded,
+                                            enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                            exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                        ) { MinusBtn { onQuantity((q - 1).coerceAtLeast(1)) } }
                                     }
                                 }
-
                                 Box(
-                                    modifier = Modifier.width(Constants.BASE_SIZE),
+                                    modifier = Modifier.width(
+                                        if(quantity != null) Constants.BASE_SIZE else Constants.BASE_SIZE + Constants.BUTTON_SIZE_S * 2
+                                    ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     MainText(
@@ -730,19 +772,16 @@ fun ShoppingListItem(
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 }
-
-                                Box(
-                                    modifier = Modifier.width(Constants.BUTTON_SIZE_S),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    androidx.compose.animation.AnimatedVisibility(
-                                        visible = isExpanded && quantity != null,
-                                        enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
-                                        exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                quantity?.let { q ->
+                                    Box(
+                                        modifier = Modifier.width(Constants.BUTTON_SIZE_S),
+                                        contentAlignment = Alignment.Center
                                     ) {
-                                        PlusBtn {
-                                            onQuantity(quantity!! + 1)
-                                        }
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = isExpanded,
+                                            enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                            exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                                        ) { PlusBtn { onQuantity(q + 1) } }
                                     }
                                 }
                             }

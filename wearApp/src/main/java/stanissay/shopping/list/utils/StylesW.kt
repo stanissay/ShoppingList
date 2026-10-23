@@ -61,9 +61,9 @@ val TypographyStyle = Typography(
 
 object Constants {
     // Base
-    val BASE_SIZE = 28.dp
-    val BASE_SIZE_S = 14.dp
+    val BASE_SIZE = 36.dp
+    val BASE_SIZE_S = 18.dp
 
     // Buttons
-    val BUTTON_SIZE = 22.dp
+    val BUTTON_SIZE = 28.dp
 }

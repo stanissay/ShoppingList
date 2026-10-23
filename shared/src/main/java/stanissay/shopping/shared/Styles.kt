@@ -7,9 +7,11 @@ object PaddingStyle {
     val xs = PaddingValues(4.dp)
     val xl = PaddingValues(16.dp)
 
+    val horizontalXs = PaddingValues(horizontal = 6.dp)
     val horizontalS = PaddingValues(horizontal = 8.dp)
     val horizontalXl = PaddingValues(horizontal = 16.dp)
 
+    val verticalXxs = PaddingValues(vertical = 2.dp)
     val verticalXs = PaddingValues(vertical = 4.dp)
 
     val none = PaddingValues(0.dp)
