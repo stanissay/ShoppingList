@@ -9,10 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -24,7 +21,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -36,13 +32,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ProgressIndicatorColors
 import androidx.wear.compose.material3.Text
-import androidx.wear.compose.material3.lazy.TransformationSpec
-import androidx.wear.compose.material3.lazy.transformedHeight
 import androidx.wear.compose.material3.ripple
 import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.MainConstants
@@ -112,40 +105,6 @@ fun MainCard(
 }
 
 @Composable
-fun TransformingLazyColumnItemScope.MainCard(
-    transformationSpec: TransformationSpec,
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
-    borderColor: Color = MainColors.TRANSPARENT,
-    contentPadding: PaddingValues = PaddingStyle.xs,
-    containerPadding: PaddingValues = PaddingStyle.xs,
-    shape: Shape = ShapesStyle.medium,
-    content: @Composable () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .padding(containerPadding)
-            .transformedHeight(this, transformationSpec)
-            .graphicsLayer {
-                with(transformationSpec) {
-                    applyContainerTransformation(scrollProgress)
-                }
-            }
-            .shadow(
-                elevation = MainConstants.ELEVATION,
-                shape = shape
-            )
-            .clip(shape)
-            .background(containerColor)
-            .border(
-                width = MainConstants.THICKNESS,
-                color = borderColor,
-                shape = shape
-            )
-    ) { Box(modifier = Modifier.padding(contentPadding)) { content() } }
-}
-
-@Composable
 fun MainLines(modifier: Modifier) {
     val cellSize = with(LocalDensity.current) { Constants.BASE_SIZE_S.toPx() }
 
@@ -173,19 +132,6 @@ fun MainLines(modifier: Modifier) {
             )
         }
     }
-}
-
-@Composable
-fun TransformingLazyColumnItemScope.WearSpacer(transformationSpec: TransformationSpec) {
-    Spacer(
-        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
-            .transformedHeight(this, transformationSpec)
-            .graphicsLayer {
-                with(transformationSpec) {
-                    applyContainerTransformation(scrollProgress)
-                }
-            }
-    )
 }
 
 @Composable
@@ -314,20 +260,6 @@ fun MainText(
         overflow = overflow,
         textDecoration = textDecoration,
         fontSize = fontSize
-    )
-}
-
-@Composable
-fun CaptionText(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    MainText(
-        text = text,
-        modifier = modifier,
-        style = MaterialTheme.typography.labelMedium,
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colorScheme.onSurface
     )
 }
 

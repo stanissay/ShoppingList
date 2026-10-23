@@ -2,8 +2,6 @@ package stanissay.shopping.list.utils
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.content.Context
-import android.widget.Toast
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.ViewModel

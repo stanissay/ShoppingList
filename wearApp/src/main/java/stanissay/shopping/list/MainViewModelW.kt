@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 import stanissay.shopping.shared.AppEventManager
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.SharedViewModel
-import stanissay.shopping.shared.ShoppingCategory
 import stanissay.shopping.shared.StringProvider
 import stanissay.shopping.shared.UiEvent
 

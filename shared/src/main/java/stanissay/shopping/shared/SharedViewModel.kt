@@ -471,60 +471,6 @@ class SharedViewModel(private val strings: StringProvider) {
     fun init() {
         auth.addAuthStateListener(authListener)
         loadAll()
-        shoppingCategories = listOf(
-            ShoppingCategory(
-                id = "cat0",
-                name = "Category 0",
-                order = 0
-            ),
-            ShoppingCategory(
-                id = "cat1",
-                name = "Category 1",
-                order = 1
-            )
-        )
-        shoppingItems = listOf(
-            ShoppingItem(
-                id = "it0",
-                name = "Item 0",
-                quantity = "1",
-                order = 0,
-                done = false,
-                categoryId = "cat0"
-            ),
-            ShoppingItem(
-                id = "it1",
-                name = "Item 1",
-                quantity = "2",
-                order = 1,
-                done = false,
-                categoryId = "cat0"
-            ),
-            ShoppingItem(
-                id = "it2",
-                name = "Item 2",
-                quantity = "3",
-                order = 2,
-                done = false,
-                categoryId = "cat0"
-            ),
-            ShoppingItem(
-                id = "it3",
-                name = "Item 3",
-                quantity = "3",
-                order = 0,
-                done = false,
-                categoryId = "cat1"
-            ),
-            ShoppingItem(
-                id = "it4",
-                name = "Item 4",
-                quantity = "4",
-                order = 1,
-                done = false,
-                categoryId = "cat1"
-            )
-        )
     }
 
     fun clear() {

@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,10 +60,11 @@ import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
-import androidx.wear.compose.material3.lazy.transformedHeight
+import androidx.wear.compose.material3.timeTextCurvedText
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import stanissay.shopping.list.utils.CheckBtn
+import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
 import stanissay.shopping.list.utils.Constants
 import stanissay.shopping.list.utils.DoneBtn
@@ -73,6 +75,7 @@ import stanissay.shopping.list.utils.MainText
 import stanissay.shopping.list.utils.MainTheme
 import stanissay.shopping.list.utils.MainViewModelFactory
 import stanissay.shopping.list.utils.PageTitle
+import stanissay.shopping.list.utils.transformedItem
 import stanissay.shopping.shared.AndroidStringProvider
 import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
@@ -96,6 +99,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val ambientState = remember { mutableStateOf(false) }
+                val isLoading by viewModel.sharedViewModel.isLoading.collectAsState()
 
                 DisposableEffect(lifecycleOwner) {
                     val ambientObserver = AmbientLifecycleObserver(
@@ -132,7 +136,10 @@ class MainActivity : ComponentActivity() {
                     label = "ambientTransition"
                 ) { isAmbient ->
                     if (!isAmbient) {
-                        MainScreen(viewModel)
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            MainScreen(viewModel)
+                            if(isLoading) CircularBar()
+                        }
                     } else AmbientDisplay()
                 }
             }
@@ -158,8 +165,25 @@ fun MainScreen(viewModel: MainViewModelW) {
     val scope = rememberCoroutineScope()
     val categories = viewModel.sharedViewModel.shoppingCategories
     var swipedItemId by remember { mutableStateOf<String?>(null) }
+    val versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "0.0"
+    val versionText = "${stringResource(R.string.version)} $versionName"
+    val versionStyle = MaterialTheme.typography.arcMedium.copy(color = MaterialTheme.colorScheme.onSurface)
+    var versionExpanded by remember { mutableStateOf(false) }
 
-    AppScaffold {
+    AppScaffold(
+        timeText = {
+            if (!versionExpanded) TimeText() else {
+                TimeText(
+                    content = {
+                        timeTextCurvedText(
+                            time = versionText,
+                            style = versionStyle
+                        )
+                    }
+                )
+            }
+        }
+    ) {
         ScreenScaffold(
             scrollState = listState,
             edgeButton = {
@@ -177,7 +201,9 @@ fun MainScreen(viewModel: MainViewModelW) {
             TransformingLazyColumn(contentPadding = contentPadding, state = listState) {
                 item {
                     if(!viewModel.sharedViewModel.isLoggedIn) {
-                        GoogleBtn {
+                        GoogleBtn(
+                            modifier = transformedItem(transformationSpec)
+                        ) {
                             scope.launch {
                                 val result = GoogleAuth(activity).signIn()
                                 result.onSuccess {
@@ -192,17 +218,20 @@ fun MainScreen(viewModel: MainViewModelW) {
                             model = viewModel.sharedViewModel.userPhotoUrl,
                             contentDescription = viewModel.sharedViewModel.userName,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(Constants.BUTTON_SIZE)
+                            modifier = transformedItem(transformationSpec).size(Constants.BUTTON_SIZE)
                                 .clip(CircleShape)
                         )
                     }
                 }
                 item {
                     ListHeader(
-                        modifier = Modifier.fillMaxWidth()
-                            .transformedHeight(this, transformationSpec),
+                        modifier = transformedItem(transformationSpec).fillMaxWidth(),
                         transformation = SurfaceTransformation(transformationSpec),
-                    ) { PageTitle(text = stringResource(R.string.app_name)) }
+                    ) {
+                        ClickableBox(
+                            onLongClick = { versionExpanded = !versionExpanded }
+                        ) { PageTitle(text = stringResource(R.string.app_name)) }
+                    }
                 }
                 items(
                     count = categories.size,
@@ -214,10 +243,10 @@ fun MainScreen(viewModel: MainViewModelW) {
                     val items = viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == category.id && !it.done }
 
                     this@TransformingLazyColumn.item {
-                        ListHeader(
-                            modifier = Modifier.fillMaxWidth()
-                                .transformedHeight(this, transformationSpec),
-                            transformation = SurfaceTransformation(transformationSpec),
+                        Box(
+                            modifier = transformedItem(transformationSpec).fillMaxWidth().height(Constants.BASE_SIZE)
+                                .padding(PaddingStyle.verticalXs),
+                            contentAlignment = Alignment.Center
                         ) {
                             MainText(
                                 text = category.name,
@@ -230,7 +259,8 @@ fun MainScreen(viewModel: MainViewModelW) {
                     items.forEach { item ->
                         this@TransformingLazyColumn.item {
                             ShoppingListItem(
-                                modifier = Modifier.padding(PaddingStyle.verticalXs),
+                                modifier = transformedItem(transformationSpec)
+                                    .padding(PaddingStyle.verticalXs),
                                 item = item,
                                 onCheck = { viewModel.sharedViewModel.toggleItemDone(item) },
                                 isSwiped = swipedItemId == item.id,
