@@ -168,6 +168,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        ongoingActivityManager.start()
+    }
+
     override fun onPause() {
         ongoingActivityManager.stop()
         super.onPause()
