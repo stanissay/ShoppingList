@@ -17,8 +17,8 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class SharedViewModel(private val strings: StringProvider) {
     private val database = FirebaseDatabase.getInstance()
-    val itemsRef = database.getReference("items")
-    val categoriesRef = database.getReference("categories")
+    val itemsRef = database.getReference("items").apply { keepSynced(true) }
+    val categoriesRef = database.getReference("categories").apply { keepSynced(true) }
     val auth = FirebaseAuth.getInstance()
     var isLoggedIn by mutableStateOf(auth.currentUser != null)
         private set
@@ -52,6 +52,7 @@ class SharedViewModel(private val strings: StringProvider) {
         private set
     private var categoriesLoaded = false
     private var itemsLoaded = false
+    private var listenersAttached = false
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messages = _messages.asSharedFlow()
 
@@ -87,7 +88,8 @@ class SharedViewModel(private val strings: StringProvider) {
     }
 
     fun loadAll() {
-        if (auth.currentUser == null) return
+        if (auth.currentUser == null || listenersAttached) return
+        listenersAttached = true
         categoriesLoaded = false
         itemsLoaded = false
         isLoadingState.value = true
@@ -476,5 +478,6 @@ class SharedViewModel(private val strings: StringProvider) {
         auth.removeAuthStateListener(authListener)
         categoriesRef.removeEventListener(categoriesListener)
         itemsRef.removeEventListener(itemsListener)
+        listenersAttached = false
     }
 }

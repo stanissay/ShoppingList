@@ -2,6 +2,9 @@ package stanissay.shopping.list.utils
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.ViewModel
@@ -10,6 +13,7 @@ import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.material3.lazy.TransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
 import stanissay.shopping.list.MainViewModelW
+import stanissay.shopping.list.OngoingManager.Companion.cancelNotification
 import stanissay.shopping.shared.StringProvider
 
 @SuppressLint("ModifierFactoryExtensionFunction")
@@ -38,4 +42,8 @@ class MainViewModelFactory(
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
+}
+
+class StopReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) = cancelNotification(context)
 }

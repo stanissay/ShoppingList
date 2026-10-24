@@ -62,6 +62,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.wear.ambient.AmbientLifecycleObserver
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumnState
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.ListHeader
@@ -121,6 +122,7 @@ class MainActivity : ComponentActivity() {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val ambientState = remember { mutableStateOf(false) }
                 val isLoading by viewModel.sharedViewModel.isLoading.collectAsState()
+                val listState = rememberTransformingLazyColumnState()
 
                 DisposableEffect(lifecycleOwner) {
                     val ambientObserver = AmbientLifecycleObserver(
@@ -158,7 +160,7 @@ class MainActivity : ComponentActivity() {
                 ) { isAmbient ->
                     if (!isAmbient) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            MainScreen(viewModel)
+                            MainScreen(viewModel, listState)
                             if(isLoading) CircularBar()
                             if(viewModel.sharedViewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.sharedViewModel.showLogoutDialog = false }
                         }
@@ -206,11 +208,10 @@ fun AmbientDisplay() {
 }
 
 @Composable
-fun MainScreen(viewModel: MainViewModelW) {
+fun MainScreen(viewModel: MainViewModelW, listState: TransformingLazyColumnState) {
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
     val activity = context as Activity
-    val listState = rememberTransformingLazyColumnState()
     val transformationSpec = rememberTransformationSpec()
     val scope = rememberCoroutineScope()
     val categories = viewModel.sharedViewModel.shoppingCategories

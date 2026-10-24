@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -430,14 +431,26 @@ fun MainList(viewModel: MainViewModelA) {
 
 @Composable
 fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
+    val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     val items = viewModel.sharedViewModel.shoppingItems.filter { it.categoryId == categoryId }
     var swipedItemId by remember { mutableStateOf<String?>(null) }
     val firstDoneIndex = items.indexOfFirst { it.done }
     val currentItems by rememberUpdatedState(items)
+    val listState = rememberLazyListState()
     val reorderState = rememberReorderableLazyListState(
+        listState = listState,
         onMove = { from, to ->
+            val firstIndex = listState.firstVisibleItemIndex
+            val firstOffset = listState.firstVisibleItemScrollOffset
+
             viewModel.sharedViewModel.moveItem(categoryId, from.index, to.index)
+
+            if (from.index == firstIndex || to.index == firstIndex) {
+                scope.launch {
+                    listState.requestScrollToItem(firstIndex, firstOffset)
+                }
+            }
         },
         onDragEnd = { _, _ ->
             viewModel.updateItemsOrder()
@@ -460,7 +473,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
             ) { viewModel.sharedViewModel.toggleItemExpanded(null) }
     ) {
         LazyColumn(
-            state = reorderState.listState,
+            state = listState,
             modifier = Modifier.fillMaxSize()
                 .padding(PaddingStyle.horizontalS)
                 .reorderable(reorderState)
@@ -506,7 +519,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                 }
             }
         }
-        VerticalScrollBar(listState = reorderState.listState, modifier = Modifier.align(Alignment.CenterEnd))
+        VerticalScrollBar(listState = listState, modifier = Modifier.align(Alignment.CenterEnd))
     }
 }
 
