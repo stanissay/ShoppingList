@@ -9,7 +9,7 @@ object ConfigW {
     const val STOP_AT = "stop_at"
     const val SHOPPING_ACTIVITY = "Shopping activity"
     const val OUTGOING_NOTIFICATION_ID = 1001
-    const val STOP_DELAY = 5 * 60 * 1000L           // 5 minutes
+    const val STOP_DELAY = 3 * 60 * 1000L           // 5 minutes
 }
 
 object DeviceInfo {
