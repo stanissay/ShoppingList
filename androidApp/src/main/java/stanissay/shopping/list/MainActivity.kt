@@ -2,6 +2,7 @@ package stanissay.shopping.list
 
 import android.app.Activity
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -285,9 +286,12 @@ fun MainList(viewModel: MainViewModelA) {
                             model = viewModel.sharedViewModel.userPhotoUrl,
                             contentDescription = viewModel.sharedViewModel.userName,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(Constants.BUTTON_SIZE)
+                            modifier = Modifier
+                                .size(Constants.BUTTON_SIZE)
                                 .clip(CircleShape)
-                                .clickable(onClick = { viewModel.sharedViewModel.showLogoutDialog = true })
+                                .clickable(onClick = {
+                                    viewModel.sharedViewModel.showLogoutDialog = true
+                                })
                         )
                     }
                 }
@@ -341,7 +345,9 @@ fun MainList(viewModel: MainViewModelA) {
                 BottomAppBar(containerColor = MaterialTheme.colorScheme.background) {
                     LazyRow(
                         state = reorderState.listState,
-                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(Constants.BASE_SIZE)
                             .background(
                                 color = MaterialTheme.colorScheme.surface,
                                 shape = MaterialTheme.shapes.large
@@ -365,8 +371,10 @@ fun MainList(viewModel: MainViewModelA) {
 
                                     ClickableBox(
                                         background = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier.width(Constants.BASE_SIZE_L).fillMaxHeight()
-                                            .shadow(elevation = if(isDragging) MainConstants.ELEVATION else MainConstants.NULL)
+                                        modifier = Modifier
+                                            .width(Constants.BASE_SIZE_L)
+                                            .fillMaxHeight()
+                                            .shadow(elevation = if (isDragging) MainConstants.ELEVATION else MainConstants.NULL)
                                             .detectReorderAfterLongPress(reorderState),
                                         onClick = {
                                             scope.launch {
@@ -390,7 +398,9 @@ fun MainList(viewModel: MainViewModelA) {
                                                     )
                                             )
                                             Box(
-                                                modifier = Modifier.weight(1f).fillMaxWidth(),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth(),
                                                 contentAlignment = Alignment.Center
                                             ) {
                                                 MainText(
@@ -466,7 +476,8 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     )
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
             .clickable(
                 interactionSource = null,
                 indication = null
@@ -474,7 +485,8 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(PaddingStyle.horizontalS)
                 .reorderable(reorderState)
         ) {
@@ -506,6 +518,10 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                                     viewModel.sharedViewModel.deleteItem(item)
                                 },
                                 onCheck = {
+                                    Log.d(
+                                        "ShoppingSwipe",
+                                        "onCheck: id=${item.id}, done=${item.done}"
+                                    )
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                                     viewModel.sharedViewModel.toggleItemDone(item)
                                 },
@@ -539,6 +555,11 @@ fun ShoppingListItem(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val currentItem by rememberUpdatedState(item)
+    val currentOnCheck by rememberUpdatedState(onCheck)
+    val currentOnDelete by rememberUpdatedState(onDelete)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    val currentOnSwipeClosed by rememberUpdatedState(onSwipeClosed)
     val revealWidthPx = with(density) { (Constants.BASE_SIZE * 2).toPx() }
     var offsetX by remember(item.id) { mutableFloatStateOf(0f) }
     var itemWidthPx by remember { mutableFloatStateOf(0f) }
@@ -556,7 +577,7 @@ fun ShoppingListItem(
     }
 
     fun animateCheck(onFinished: (() -> Unit)? = null) {
-        val targetY = if (item.done) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
+        val targetY = if (currentItem.done) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
         scope.launch {
             val xAnimation = launch {
                 Animatable(offsetX).animateTo(
@@ -603,25 +624,31 @@ fun ShoppingListItem(
             .fillMaxWidth()
             .animateContentSize()
     ) {
-        if (offsetX < 0f) {
-            ClickableBox(
-                modifier = Modifier.matchParentSize(),
-                background = MainColors.NEGATIVE.copy(alpha = 0.5f),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                DeleteBtn(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
-                    animateDelete { onDelete() }
-                }
-            }
-        }
         if (offsetX > 0f) {
             ClickableBox(
                 modifier = Modifier.matchParentSize(),
-                background = MainColors.POSITIVE.copy(alpha = 0.5f),
+                background = MainColors.NEGATIVE.copy(alpha = 0.5f),
                 contentAlignment = Alignment.CenterStart
             ) {
+                DeleteBtn(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
+                    animateDelete {
+                        onSwipeClosed()
+                        onDelete()
+                    }
+                }
+            }
+        }
+        if (offsetX < 0f) {
+            ClickableBox(
+                modifier = Modifier.matchParentSize(),
+                background = MainColors.POSITIVE.copy(alpha = 0.5f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
                 DoneBtn(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
-                    animateCheck { onCheck() }
+                    animateCheck {
+                        onSwipeClosed()
+                        onCheck()
+                    }
                 }
             }
         }
@@ -637,25 +664,27 @@ fun ShoppingListItem(
                         val startX = down.position.x
                         if (itemWidthPx <= 0f) return@awaitEachGesture
                         val edge = itemWidthPx * 0.25f
+                        val fullSwipe = itemWidthPx * 0.5f
                         val openedAtStart = isSwiped || offsetX != 0f
                         val startedFromLeft = startX <= edge
                         val startedFromRight = startX >= itemWidthPx - edge
                         if (!openedAtStart && !startedFromLeft && !startedFromRight) return@awaitEachGesture
                         dragStartOffset = offsetX
 
-                        val firstDrag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
-                            val movingRight = over > 0f
-                            val allowed = openedAtStart ||
-                                    (startedFromLeft && movingRight) ||
-                                    (startedFromRight && !movingRight)
+                        val firstDrag =
+                            awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                                val movingRight = over > 0f
+                                val allowed = openedAtStart ||
+                                        (startedFromLeft && movingRight) ||
+                                        (startedFromRight && !movingRight)
 
-                            if (allowed) {
-                                change.consume()
-                                offsetX = (offsetX + over).coerceIn(
-                                    -itemWidthPx, itemWidthPx
-                                )
+                                if (allowed) {
+                                    change.consume()
+                                    offsetX = (offsetX + over).coerceIn(
+                                        -itemWidthPx, itemWidthPx
+                                    )
+                                }
                             }
-                        }
 
                         if (firstDrag == null) return@awaitEachGesture
 
@@ -676,46 +705,47 @@ fun ShoppingListItem(
                         }
 
                         if (!completed) {
-                            onSwipeClosed()
+                            currentOnSwipeClosed()
                             animateOffset(0f)
                             return@awaitEachGesture
                         }
 
                         when {
                             dragStartOffset < 0f && offsetX > dragStartOffset -> {
-                                onSwipeClosed()
+                                currentOnSwipeClosed()
                                 animateOffset(0f)
                             }
 
                             dragStartOffset > 0f && offsetX < dragStartOffset -> {
-                                onSwipeClosed()
+                                currentOnSwipeClosed()
                                 animateOffset(0f)
                             }
 
-                            offsetX <= -itemWidthPx * 0.75f ->
-                                animateDelete {
-                                    onSwipeClosed()
-                                    onDelete()
-                                }
-
-                            offsetX >= itemWidthPx * 0.75f ->
+                            offsetX <= -fullSwipe -> {
                                 animateCheck {
-                                    onSwipeClosed()
-                                    onCheck()
+                                    currentOnSwipeClosed()
+                                    currentOnCheck()
+                                }
+                            }
+
+                            offsetX >= fullSwipe ->
+                                animateDelete {
+                                    currentOnSwipeClosed()
+                                    currentOnDelete()
                                 }
 
                             offsetX < -revealWidthPx / 2f -> {
-                                onSwipe()
+                                currentOnSwipe()
                                 animateOffset(-revealWidthPx)
                             }
 
                             offsetX > revealWidthPx / 2f -> {
-                                onSwipe()
+                                currentOnSwipe()
                                 animateOffset(revealWidthPx)
                             }
 
                             else -> {
-                                onSwipeClosed()
+                                currentOnSwipeClosed()
                                 animateOffset(0f)
                             }
                         }
@@ -735,7 +765,9 @@ fun ShoppingListItem(
             ) {
                 Column(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(Constants.BASE_SIZE),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         androidx.compose.animation.AnimatedVisibility(
@@ -744,7 +776,8 @@ fun ShoppingListItem(
                             exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
                         ) { CheckBtn(checked = item.done) { onCheck() } }
                         Box(
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
                                 .padding(PaddingStyle.horizontalS),
                             contentAlignment = Alignment.CenterStart
                         ) {
@@ -810,12 +843,19 @@ fun ShoppingListItem(
                         ) {
                             if (item.note.isNotBlank()) {
                                 SelectionText(
-                                    modifier = Modifier.weight(1f).heightIn(min = Constants.BASE_SIZE, max = Constants.BASE_SIZE_L)
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(
+                                            min = Constants.BASE_SIZE,
+                                            max = Constants.BASE_SIZE_L
+                                        )
                                         .padding(PaddingStyle.xl)
                                         .verticalScroll(rememberScrollState()),
                                     text = item.note
                                 )
-                            } else Spacer(modifier = Modifier.weight(1f).height(Constants.BASE_SIZE))
+                            } else Spacer(modifier = Modifier
+                                .weight(1f)
+                                .height(Constants.BASE_SIZE))
                             Row(
                                 modifier = Modifier.height(Constants.BASE_SIZE),
                                 verticalAlignment = Alignment.CenterVertically
@@ -990,16 +1030,22 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
                 ) { DialogTitle(stringResource(R.string.buy)) }
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Box(
-                        modifier = Modifier.weight(1f).fillMaxHeight()
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     ) {
                         MainTextField(
                             state = name,
@@ -1033,7 +1079,9 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     )
                 }
                 MainCard(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE_L),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE_L),
                     contentPadding = PaddingStyle.xs,
                     containerPadding = PaddingStyle.xl,
                     containerColor = MaterialTheme.colorScheme.surface
@@ -1049,7 +1097,9 @@ fun ItemDialog(viewModel: MainViewModelA, categoryId: String?, onDismiss: () -> 
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
@@ -1100,7 +1150,9 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE)
                         .padding(PaddingStyle.horizontalS),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -1112,7 +1164,9 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     } else Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE_S))
                 }
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
                 ) {
                     MainTextField(
@@ -1123,7 +1177,9 @@ fun CategoryDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     )
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
@@ -1159,11 +1215,15 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     contentAlignment = Alignment.Center
                 ) { DialogTitle(stringResource(R.string.logout)) }
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(Constants.BASE_SIZE),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {

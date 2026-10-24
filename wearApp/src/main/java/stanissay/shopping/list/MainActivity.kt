@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -336,6 +337,10 @@ fun ShoppingListItem(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val currentItem by rememberUpdatedState(item)
+    val currentOnCheck by rememberUpdatedState(onCheck)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    val currentOnSwipeClosed by rememberUpdatedState(onSwipeClosed)
     val revealWidthPx = with(density) { (Constants.BASE_SIZE * 2).toPx() }
     var offsetX by remember(item.id) { mutableFloatStateOf(0f) }
     var itemWidthPx by remember { mutableFloatStateOf(0f) }
@@ -353,7 +358,7 @@ fun ShoppingListItem(
     }
 
     fun animateCheck(onFinished: (() -> Unit)? = null) {
-        val targetY = if (item.done) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
+        val targetY = if (currentItem.done) -itemWidthPx * 0.5f else itemWidthPx * 0.5f
         scope.launch {
             val xAnimation = launch {
                 Animatable(offsetX).animateTo(
@@ -389,7 +394,10 @@ fun ShoppingListItem(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 DoneBtn(modifier = Modifier.padding(PaddingStyle.horizontalXl)) {
-                    animateCheck { onCheck() }
+                    animateCheck {
+                        onSwipeClosed()
+                        onCheck()
+                    }
                 }
             }
         }
@@ -404,6 +412,7 @@ fun ShoppingListItem(
                         val startX = down.position.x
                         if (itemWidthPx <= 0f) return@awaitEachGesture
                         val edge = itemWidthPx * 0.25f
+                        val fullSwipe = itemWidthPx * 0.5f
                         val openedAtStart = isSwiped || offsetX != 0f
                         val startedFromRight = startX >= itemWidthPx - edge
                         if (!openedAtStart && !startedFromRight) return@awaitEachGesture
@@ -431,30 +440,30 @@ fun ShoppingListItem(
                         }
 
                         if (!completed) {
-                            onSwipeClosed()
+                            currentOnSwipeClosed()
                             animateOffset(0f)
                             return@awaitEachGesture
                         }
 
                         when {
                             dragStartOffset < 0f && offsetX > dragStartOffset -> {
-                                onSwipeClosed()
+                                currentOnSwipeClosed()
                                 animateOffset(0f)
                             }
 
-                            offsetX <= -itemWidthPx * 0.75f ->
+                            offsetX <= -fullSwipe ->
                                 animateCheck {
                                     onSwipeClosed()
-                                    onCheck()
+                                    currentOnCheck()
                                 }
 
                             offsetX < -revealWidthPx / 2f -> {
-                                onSwipe()
+                                currentOnSwipe()
                                 animateOffset(-revealWidthPx)
                             }
 
                             else -> {
-                                onSwipeClosed()
+                                currentOnSwipeClosed()
                                 animateOffset(0f)
                             }
                         }
