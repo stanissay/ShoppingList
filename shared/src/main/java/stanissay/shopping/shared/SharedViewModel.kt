@@ -97,13 +97,13 @@ class SharedViewModel(private val strings: StringProvider) {
 
     private val categoriesListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            shoppingCategories = snapshot.children.mapNotNull { child ->
+            val categories = snapshot.children.mapNotNull { child ->
                 val category = child.getValue(ShoppingCategory::class.java)
                 category?.copy(id = child.key ?: return@mapNotNull null)
             }
+            sortCategories(categories)
             categoriesLoaded = true
             updateLoadingState()
-            sortCategories()
         }
 
         override fun onCancelled(error: DatabaseError) {
@@ -112,13 +112,13 @@ class SharedViewModel(private val strings: StringProvider) {
     }
     private val itemsListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            shoppingItems = snapshot.children.mapNotNull { child ->
+            val items = snapshot.children.mapNotNull { child ->
                 val item = child.getValue(ShoppingItem::class.java)
                 item?.copy(id = child.key ?: return@mapNotNull null)
             }
+            sortItems(items)
             itemsLoaded = true
             updateLoadingState()
-            sortItems()
         }
 
         override fun onCancelled(error: DatabaseError) {
@@ -134,8 +134,8 @@ class SharedViewModel(private val strings: StringProvider) {
         itemsRef.addValueEventListener(itemsListener)
     }
 
-    fun sortItems() {
-        shoppingItems = shoppingItems
+    fun sortItems(items: List<ShoppingItem>) {
+        shoppingItems = items
             .groupBy { it.categoryId }
             .values
             .flatMap { categoryItems ->
@@ -152,8 +152,8 @@ class SharedViewModel(private val strings: StringProvider) {
             }
     }
 
-    fun sortCategories() {
-        shoppingCategories = shoppingCategories
+    fun sortCategories(categories: List<ShoppingCategory>) {
+        shoppingCategories = categories
             .sortedBy { it.order }
             .mapIndexed { index, category ->
                 category.copy(order = index)
@@ -305,11 +305,11 @@ class SharedViewModel(private val strings: StringProvider) {
 
         val reorderedById = reorderedItems.associateBy { it.id }
 
-        shoppingItems = shoppingItems.map { item ->
+        val items = shoppingItems.map { item ->
             reorderedById[item.id] ?: item
         }
 
-        sortItems()
+        sortItems(items)
     }
 
     suspend fun updateItemsOrder() {
@@ -440,7 +440,6 @@ class SharedViewModel(private val strings: StringProvider) {
                     )
                 }
             }
-        sortItems()
     }
 
     private fun generateUniqueId(): String {
