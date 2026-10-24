@@ -478,6 +478,7 @@ class SharedViewModel(private val strings: StringProvider) {
     fun logout() {
         categoriesRef.removeEventListener(categoriesListener)
         itemsRef.removeEventListener(itemsListener)
+        listenersAttached = false
         shoppingCategories = emptyList()
         shoppingItems = emptyList()
         showLogoutDialog = false
