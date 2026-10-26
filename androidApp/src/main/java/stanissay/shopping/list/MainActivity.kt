@@ -696,7 +696,7 @@ fun ShoppingListItem(
     fun animateDelete(onFinished: (() -> Unit)? = null) {
         scope.launch {
             Animatable(offsetX).animateTo(
-                targetValue = -itemWidthPx * 1.5f,
+                targetValue = itemWidthPx * 1.5f,
                 animationSpec = tween(MainConstants.ANIMATION_MS)
             ) { offsetX = value }
             onFinished?.invoke()
