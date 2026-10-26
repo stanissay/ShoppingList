@@ -102,7 +102,16 @@ class NotificationsService : Service() {
             override fun onChildChanged(s: DataSnapshot, p: String?) = handle(s, uid)
             override fun onChildRemoved(s: DataSnapshot) {}
             override fun onChildMoved(s: DataSnapshot, p: String?) {}
-            override fun onCancelled(e: DatabaseError) {}
+            override fun onCancelled(e: DatabaseError) {
+                if (listener !== this) return
+                detachListener()
+                if (e.code != DatabaseError.PERMISSION_DENIED) {
+                    scope.launch {
+                        delay(30000.milliseconds)
+                        tryConnectNow()
+                    }
+                }
+            }
         }
         q.addChildEventListener(l)
         query = q; listener = l
