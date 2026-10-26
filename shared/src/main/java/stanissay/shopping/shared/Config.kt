@@ -20,8 +20,26 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.database
+import kotlin.math.absoluteValue
 
 enum class DeviceType { AndroidPhone, AndroidTablet, AndroidWear }
+
+object DataKeys {
+    const val APP_SETTINGS = "app_settings"
+    const val NOTIFICATIONS_PERMISSION_ASKED = "notifications_permission_asked"
+    const val BATTERY_EXEMPTION_ASKED = "battery_exemption_asked"
+    const val LAST_SEEN = "last_seen"
+    const val ACTION_CONNECT_NOW = "CONNECT_NOW"
+    const val OUTGOING_CHANNEL_ID = "shopping_activity"
+    const val STOP_AT = "stop_at"
+    const val SHOPPING_ACTIVITY = "Shopping activity"
+    val HASH_ID = "StanissayShoppingList".hashCode().absoluteValue
+    const val FGS_CHANNEL = "foreground_channel"
+    const val NEW_ITEMS_CHANNEL = "new_items_notification_channel"
+    const val OUTGOING_NOTIFICATION_ID = 1001
+    const val NEW_ITEMS_NOTIFICATION_ID = 1002
+    const val STOP_DELAY = 3 * 60 * 1000L           // 3 minutes
+}
 
 object ServerClock {
     @Volatile private var offset = 0L

@@ -93,7 +93,6 @@ import kotlinx.coroutines.launch
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
 import stanissay.shopping.list.utils.CloseBtn
-import stanissay.shopping.list.utils.ConfigW
 import stanissay.shopping.list.utils.Constants
 import stanissay.shopping.list.utils.DialogTitle
 import stanissay.shopping.list.utils.DoneBtn
@@ -107,6 +106,7 @@ import stanissay.shopping.list.utils.PageTitle
 import stanissay.shopping.list.utils.transformedItem
 import stanissay.shopping.shared.AndroidStringProvider
 import stanissay.shopping.shared.AppEventManager
+import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.MainConstants
@@ -204,11 +204,11 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val prefs = getSharedPreferences(ConfigW.APP_SETTINGS, MODE_PRIVATE)
-        val alreadyAsked = prefs.getBoolean(ConfigW.NOTIFICATIONS_PERMISSION_ASKED, false)
+        val prefs = getSharedPreferences(DataKeys.APP_SETTINGS, MODE_PRIVATE)
+        val alreadyAsked = prefs.getBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, false)
 
         if (!alreadyAsked) {
-            prefs.edit { putBoolean(ConfigW.NOTIFICATIONS_PERMISSION_ASKED, true) }
+            prefs.edit { putBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, true) }
             notificationPermissionLauncher.launch(permission)
         }
     }

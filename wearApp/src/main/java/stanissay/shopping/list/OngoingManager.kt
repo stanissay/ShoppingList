@@ -30,8 +30,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.wear.ongoing.OngoingActivity
-import stanissay.shopping.list.utils.ConfigW
 import stanissay.shopping.list.utils.StopReceiver
+import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.R
 
 class OngoingManager(context: Context) {
@@ -39,15 +39,15 @@ class OngoingManager(context: Context) {
 
     companion object {
         private fun prefs(c: Context) =
-            c.getSharedPreferences(ConfigW.APP_SETTINGS, Context.MODE_PRIVATE)
+            c.getSharedPreferences(DataKeys.APP_SETTINGS, Context.MODE_PRIVATE)
 
         fun cancelNotification(c: Context) {
-            NotificationManagerCompat.from(c).cancel(ConfigW.OUTGOING_NOTIFICATION_ID)
-            prefs(c).edit { remove(ConfigW.STOP_AT) }
+            NotificationManagerCompat.from(c).cancel(DataKeys.OUTGOING_NOTIFICATION_ID)
+            prefs(c).edit { remove(DataKeys.STOP_AT) }
         }
 
         fun cancelIfExpired(c: Context) {
-            val stopAt = prefs(c).getLong(ConfigW.STOP_AT, 0L)
+            val stopAt = prefs(c).getLong(DataKeys.STOP_AT, 0L)
             if (stopAt != 0L && System.currentTimeMillis() >= stopAt) cancelNotification(c)
         }
     }
@@ -69,7 +69,7 @@ class OngoingManager(context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, ConfigW.OUTGOING_CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, DataKeys.OUTGOING_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_bag)
             .setContentTitle(context.getString(R.string.app_name))
             .setContentText(context.getString(R.string.shopping))
@@ -79,16 +79,16 @@ class OngoingManager(context: Context) {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
 
-        val ongoingActivity = OngoingActivity.Builder(context, ConfigW.OUTGOING_NOTIFICATION_ID, notification)
+        val ongoingActivity = OngoingActivity.Builder(context, DataKeys.OUTGOING_NOTIFICATION_ID, notification)
             .setStaticIcon(R.drawable.ic_bag).setTouchIntent(pendingIntent).build()
 
         ongoingActivity.apply(context)
 
-        NotificationManagerCompat.from(context).notify(ConfigW.OUTGOING_NOTIFICATION_ID, notification.build())
+        NotificationManagerCompat.from(context).notify(DataKeys.OUTGOING_NOTIFICATION_ID, notification.build())
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(ConfigW.OUTGOING_CHANNEL_ID, ConfigW.SHOPPING_ACTIVITY, NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(DataKeys.OUTGOING_CHANNEL_ID, DataKeys.SHOPPING_ACTIVITY, NotificationManager.IMPORTANCE_LOW
         ).apply { description = context.getString(R.string.current_list) }
 
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -97,17 +97,17 @@ class OngoingManager(context: Context) {
     fun stop() {
         cancelScheduledStop()
         prefs(context).edit {
-            putLong(ConfigW.STOP_AT, System.currentTimeMillis() + ConfigW.STOP_DELAY)
+            putLong(DataKeys.STOP_AT, System.currentTimeMillis() + DataKeys.STOP_DELAY)
         }
         context.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
             AlarmManager.ELAPSED_REALTIME_WAKEUP,
-            SystemClock.elapsedRealtime() + ConfigW.STOP_DELAY,
+            SystemClock.elapsedRealtime() + DataKeys.STOP_DELAY,
             stopPendingIntent()!!
         )
     }
 
     fun cancelScheduledStop() {
-        prefs(context).edit { remove(ConfigW.STOP_AT) }
+        prefs(context).edit { remove(DataKeys.STOP_AT) }
         stopPendingIntent(create = false)?.let {
             context.getSystemService(AlarmManager::class.java).cancel(it)
             it.cancel()

@@ -15,11 +15,19 @@
 
 package stanissay.shopping.list
 
+import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -112,6 +120,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -148,6 +159,7 @@ import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.VerticalScrollBar
 import stanissay.shopping.shared.AndroidStringProvider
 import stanissay.shopping.shared.AppEventManager
+import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
 import stanissay.shopping.shared.MainConstants
@@ -181,6 +193,69 @@ class MainActivity : ComponentActivity() {
                     if(isLoading) CircularBar()
                 }
             }
+        }
+        ensureNotificationPermission()
+        ensureBatteryOptimizationExemption()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        NotificationManagerCompat.from(this).cancel(DataKeys.NEW_ITEMS_NOTIFICATION_ID)
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+        if(isGranted) startNotificationsService()
+    }
+
+    private fun ensureNotificationPermission() {
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+            startNotificationsService()
+            return
+        }
+
+        val prefs = getSharedPreferences(DataKeys.APP_SETTINGS, MODE_PRIVATE)
+        val alreadyAsked = prefs.getBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, false)
+
+        if (!alreadyAsked) {
+            prefs.edit { putBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, true) }
+            notificationPermissionLauncher.launch(permission)
+        }
+    }
+
+    private fun startNotificationsService() {
+        val intent = Intent(this, NotificationsService::class.java).apply {
+            action = DataKeys.ACTION_CONNECT_NOW
+        }
+
+        startForegroundService(intent)
+    }
+
+    private fun ensureBatteryOptimizationExemption() {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        val packageName = packageName
+        val prefs = getSharedPreferences(DataKeys.APP_SETTINGS, MODE_PRIVATE)
+
+        val alreadyAsked = prefs.getBoolean(DataKeys.BATTERY_EXEMPTION_ASKED, false)
+        if (alreadyAsked) return
+
+        if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+            AlertDialog.Builder(this)
+                .setTitle(this.getString(R.string.work_in_back))
+                .setMessage(this.getString(R.string.work_in_back_message))
+                .setPositiveButton(this.getString(R.string.go_to_settings)) { _, _ ->
+                    val intent = Intent().apply {
+                        action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                        data = Uri.fromParts("package", packageName, null)
+                    }
+                    startActivity(intent)
+                    prefs.edit { putBoolean(DataKeys.BATTERY_EXEMPTION_ASKED, true) }
+                }
+                .setNegativeButton(this.getString(R.string.close)) { _, _ ->
+                    prefs.edit { putBoolean(DataKeys.BATTERY_EXEMPTION_ASKED, true) }
+                }
+                .show()
         }
     }
 }
@@ -288,6 +363,10 @@ fun MainList(viewModel: MainViewModelA) {
                                 val result = GoogleAuth(activity).signIn()
                                 result.onSuccess {
                                     viewModel.login()
+                                    ContextCompat.startForegroundService(
+                                        context,
+                                        Intent(context, NotificationsService::class.java).setAction(DataKeys.ACTION_CONNECT_NOW)
+                                    )
                                 }.onFailure { error ->
                                     snackbarHostState.showSnackbar(
                                         message = error.message.toString(),
@@ -304,9 +383,7 @@ fun MainList(viewModel: MainViewModelA) {
                             modifier = Modifier
                                 .size(Constants.BUTTON_SIZE)
                                 .clip(CircleShape)
-                                .clickable(onClick = {
-                                    viewModel.sharedViewModel.showLogoutDialog = true
-                                })
+                                .clickable(onClick = { viewModel.sharedViewModel.showLogoutDialog = true })
                         )
                     }
                 }
@@ -1245,6 +1322,7 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     CloseBtn { onDismiss() }
                     DoneBtn {
                         scope.launch {
+                            activity.stopService(Intent(activity, NotificationsService::class.java))
                             GoogleAuth(activity).signOut()
                             viewModel.logout()
                         }
