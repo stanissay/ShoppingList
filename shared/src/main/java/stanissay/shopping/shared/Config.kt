@@ -15,4 +15,26 @@
 
 package stanissay.shopping.shared
 
+import com.google.firebase.Firebase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.database
+
 enum class DeviceType { AndroidPhone, AndroidTablet, AndroidWear }
+
+object ServerClock {
+    @Volatile private var offset = 0L
+
+    fun start() {
+        Firebase.database.getReference(".info/serverTimeOffset")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(s: DataSnapshot) {
+                    offset = s.getValue(Long::class.java) ?: 0L
+                }
+                override fun onCancelled(e: DatabaseError) {}
+            })
+    }
+
+    fun now() = System.currentTimeMillis() + offset
+}

@@ -18,6 +18,7 @@ package stanissay.shopping.list
 import android.app.Application
 import com.google.firebase.database.FirebaseDatabase
 import stanissay.shopping.list.utils.DeviceInfo
+import stanissay.shopping.shared.ServerClock
 
 class MyApplication : Application() {
     override fun onCreate() {
@@ -25,5 +26,6 @@ class MyApplication : Application() {
         DeviceInfo.init()
         OngoingManager.cancelIfExpired(applicationContext)
         FirebaseDatabase.getInstance().setPersistenceEnabled(true)
+        ServerClock.start()
     }
 }

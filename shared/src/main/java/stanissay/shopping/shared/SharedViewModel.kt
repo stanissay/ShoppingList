@@ -37,6 +37,8 @@ class SharedViewModel(private val strings: StringProvider) {
     val auth = FirebaseAuth.getInstance()
     var isLoggedIn by mutableStateOf(auth.currentUser != null)
         private set
+    var userId by mutableStateOf(auth.currentUser?.uid)
+        private set
     var userName by mutableStateOf(auth.currentUser?.displayName)
         private set
     var userEmail by mutableStateOf(auth.currentUser?.email)
@@ -46,6 +48,7 @@ class SharedViewModel(private val strings: StringProvider) {
     val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         val user = firebaseAuth.currentUser
         isLoggedIn = user != null
+        userId = user?.uid
         userName = user?.displayName
         userEmail = user?.email
         userPhotoUrl = user?.photoUrl?.toString()
@@ -204,12 +207,13 @@ class SharedViewModel(private val strings: StringProvider) {
             }
         }
 
-        fun saveItem(updated: ShoppingItem, deleteId: String? = null) {
+        fun saveItem(updated: ShoppingItem, activate: Boolean, deleteId: String? = null) {
             val updates = mutableMapOf<String, Any?>()
-            if (deleteId != null && deleteId != updated.id) {
-                updates[deleteId] = null
-            }
-            updates[updated.id] = updated
+            if (deleteId != null && deleteId != updated.id) updates[deleteId] = null
+
+            updates[updated.id] = if (activate)
+                updated.copy(activatedBy = userId, activatedAt = ServerClock.now())
+            else updated
 
             itemsRef.updateChildren(updates)
                 .addOnSuccessListener {}.addOnFailureListener { error ->
@@ -225,7 +229,8 @@ class SharedViewModel(private val strings: StringProvider) {
                         quantity = mergeQuantity(existingByName),
                         done = false,
                         categoryId = categoryId
-                    )
+                    ),
+                    true
                 )
                 return
             }
@@ -240,7 +245,8 @@ class SharedViewModel(private val strings: StringProvider) {
                     done = false,
                     order = categoryOrder,
                     categoryId = categoryId
-                )
+                ),
+                true
             )
             return
         }
@@ -259,6 +265,7 @@ class SharedViewModel(private val strings: StringProvider) {
                     done = false,
                     categoryId = categoryId
                 ),
+                activate = existingByName.done,
                 deleteId = original.id
             )
             hideItemDialog()
@@ -274,7 +281,7 @@ class SharedViewModel(private val strings: StringProvider) {
             categoryId = categoryId
         )
 
-        saveItem(updated)
+        saveItem(updated, original.done)
         hideItemDialog()
     }
 

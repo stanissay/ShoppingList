@@ -42,7 +42,9 @@ data class ShoppingItem(
     var quantity: String? = null,
     var done: Boolean = false,
     var order: Int = 0,
-    var categoryId: String? = null
+    var categoryId: String? = null,
+    var activatedBy: String? = null,
+    var activatedAt: Long? = null
 )
 
 @Serializable
