@@ -17,6 +17,8 @@
     <string name="delete">Видалити</string>
     <string name="purchased">Куплено</string>
     <string name="not_purchased">Не куплено</string>
+    <string name="back">Назад</string>
+    <string name="forward">Вперед</string>
     <string name="done">Підтвердити</string>
     <string name="close">Закрити</string>
     <string name="name">Назва</string>

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.material3.ColorProviders
 import stanissay.shopping.shared.MainColors
 
 val ColorStyle = darkColorScheme(
@@ -36,6 +37,24 @@ val ColorStyle = darkColorScheme(
     onSurface = MainColors.LIGHT_GRAY,
 
     outline = MainColors.THIN_BORDER
+)
+
+private val widgetColorScheme = darkColorScheme(
+    primary = MainColors.FIRST_ACCENT,
+    secondary = MainColors.SECOND_ACCENT,
+
+    background = MainColors.BACKGROUND,
+    onBackground = MainColors.WHITE,
+
+    surface = MainColors.GRAY,
+    onSurface = MainColors.LIGHT_GRAY,
+
+    outline = MainColors.THIN_BORDER
+)
+
+val WidgetColorStyle = ColorProviders(
+    light = widgetColorScheme,
+    dark = widgetColorScheme
 )
 
 val ShapesStyle = Shapes(

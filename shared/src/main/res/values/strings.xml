@@ -17,6 +17,8 @@
     <string name="delete">Delete</string>
     <string name="purchased">Purchased</string>
     <string name="not_purchased">Not Purchased</string>
+    <string name="back">Back</string>
+    <string name="forward">Forward</string>
     <string name="done">Confirm</string>
     <string name="close">Close</string>
     <string name="name">Name</string>

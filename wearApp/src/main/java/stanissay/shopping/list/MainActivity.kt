@@ -303,7 +303,11 @@ fun MainScreen(viewModel: MainViewModelW, listState: TransformingLazyColumnState
                         ) { PageTitle(text = stringResource(R.string.app_name)) }
                     }
                 }
-                categories.forEach { category ->
+                categories
+                    .filter { category ->
+                        viewModel.sharedViewModel.shoppingItems.any { it.categoryId == category.id && !it.done }
+                    }
+                    .forEach { category ->
                     item(key = category.id) {
                         Box(
                             modifier = transformedItem(transformationSpec).fillMaxWidth().height(Constants.BASE_SIZE)

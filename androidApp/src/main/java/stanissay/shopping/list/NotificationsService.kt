@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.google.firebase.Firebase
@@ -25,6 +26,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.Query
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,13 +37,18 @@ import kotlinx.coroutines.launch
 import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.ServerClock
+import stanissay.shopping.shared.ShoppingCategory
 import stanissay.shopping.shared.ShoppingItem
 import kotlin.time.Duration.Companion.milliseconds
 
 class NotificationsService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var debounceJob: Job? = null
-    private var listener: ChildEventListener? = null
+    private var itemsQuery: Query? = null
+    private var categoriesQuery: Query? = null
+    private var notificationsListener: ChildEventListener? = null
+    private var widgetItemsListener: ValueEventListener? = null
+    private var widgetCategoriesListener: ValueEventListener? = null
     private var query: Query? = null
     private var myId: String? = null
     private var startFrom = 0L
@@ -59,6 +66,7 @@ class NotificationsService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == DataKeys.ACTION_CONNECT_NOW) {
             tryConnectNow()
+            attachWidgetListeners()
         }
 
         return START_STICKY
@@ -70,6 +78,7 @@ class NotificationsService : Service() {
         startForeground(DataKeys.HASH_ID, showFGSNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         Firebase.auth.addAuthStateListener(authListener)
         tryConnectNow()
+        attachWidgetListeners()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -77,7 +86,7 @@ class NotificationsService : Service() {
     private fun tryConnectNow() {
         val uid = Firebase.auth.currentUser?.uid
         if (uid == null) { stopSelf(); return }
-        if (listener != null && uid == myId) return
+        if (notificationsListener != null && uid == myId) return
 
         detachListener()
         myId = uid
@@ -103,7 +112,7 @@ class NotificationsService : Service() {
             override fun onChildRemoved(s: DataSnapshot) {}
             override fun onChildMoved(s: DataSnapshot, p: String?) {}
             override fun onCancelled(e: DatabaseError) {
-                if (listener !== this) return
+                if (notificationsListener !== this) return
                 detachListener()
                 if (e.code != DatabaseError.PERMISSION_DENIED) {
                     scope.launch {
@@ -114,7 +123,38 @@ class NotificationsService : Service() {
             }
         }
         q.addChildEventListener(l)
-        query = q; listener = l
+        query = q; notificationsListener = l
+    }
+
+    private fun attachWidgetListeners() {
+        val uid = Firebase.auth.currentUser?.uid
+        if (uid == null) { stopSelf(); return }
+        if (widgetCategoriesListener != null && widgetItemsListener != null) return
+        val r = FirebaseDatabase.getInstance().reference
+        val i = r.child("items")
+        val c = r.child("categories")
+
+        widgetItemsListener = object : ValueEventListener {
+            override fun onDataChange(s: DataSnapshot) {
+                val items = s.children.mapNotNull { it.getValue(ShoppingItem::class.java) }
+                    .filter { !it.done }
+                WidgetStore.saveItems(applicationContext, items)
+                scope.launch { ShoppingWidget().updateAll(applicationContext) }
+            }
+            override fun onCancelled(e: DatabaseError) {}
+        }
+        widgetCategoriesListener = object : ValueEventListener {
+            override fun onDataChange(s: DataSnapshot) {
+                val categories = s.children.mapNotNull { it.getValue(ShoppingCategory::class.java) }
+                WidgetStore.saveCategories(applicationContext, categories)
+                scope.launch { ShoppingWidget().updateAll(applicationContext) }
+            }
+            override fun onCancelled(e: DatabaseError) {}
+        }
+
+        i.addValueEventListener(widgetItemsListener!!)
+        c.addValueEventListener(widgetCategoriesListener!!)
+        itemsQuery = i; categoriesQuery = c
     }
 
     private fun handle(s: DataSnapshot, uid: String) {
@@ -211,8 +251,11 @@ class NotificationsService : Service() {
     private fun isAppInForeground() = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
     private fun detachListener() {
-        listener?.let { query?.removeEventListener(it) }
-        listener = null; query = null
+        notificationsListener?.let { query?.removeEventListener(it) }
+        widgetCategoriesListener?.let { categoriesQuery?.removeEventListener(it) }
+        widgetItemsListener?.let { itemsQuery?.removeEventListener(it) }
+        notificationsListener = null; widgetItemsListener = null; widgetCategoriesListener = null
+        query = null; categoriesQuery = null; itemsQuery = null
     }
 
     override fun onDestroy() {

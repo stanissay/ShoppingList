@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -34,4 +35,5 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     //noinspection LoginCredentials
     implementation(libs.googleid)
+    implementation(libs.androidx.datastore.preferences)
 }
