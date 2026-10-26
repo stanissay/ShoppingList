@@ -203,8 +203,8 @@ class MainActivity : ComponentActivity() {
         NotificationManagerCompat.from(this).cancel(DataKeys.NEW_ITEMS_NOTIFICATION_ID)
     }
 
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-        if(isGranted) startNotificationsService()
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if(granted) startNotificationsService()
     }
 
     private fun ensureNotificationPermission() {

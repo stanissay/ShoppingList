@@ -59,4 +59,5 @@ dependencies {
     implementation(libs.coil.network.okhttp)
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.androidx.fragment.ktx)
 }
