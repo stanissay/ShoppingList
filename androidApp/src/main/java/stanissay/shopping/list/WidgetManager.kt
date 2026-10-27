@@ -28,6 +28,7 @@ import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
@@ -56,6 +57,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import stanissay.shopping.list.WidgetStore.CATEGORY_KEY
 import stanissay.shopping.list.WidgetStore.DIR_KEY
 import stanissay.shopping.list.WidgetStore.ITEM_KEY
 import stanissay.shopping.list.utils.Constants
@@ -73,6 +75,7 @@ object WidgetStore {
     private fun prefs(context: Context) = context.getSharedPreferences(DataKeys.WIDGET_PREFS, Context.MODE_PRIVATE)
     val DIR_KEY = ActionParameters.Key<Int>("dir")
     val ITEM_KEY = ActionParameters.Key<String>("item")
+    val CATEGORY_KEY = ActionParameters.Key<String>(DataKeys.CATEGORY_ID)
 
     fun save(context: Context, snapshot: ListSnapshot) = prefs(context).edit {
         putString(DataKeys.SNAPSHOT, json.encodeToString(ListSnapshot.serializer(), snapshot))
@@ -99,14 +102,14 @@ class ShoppingWidget : GlanceAppWidget() {
                 val snapshot = remember(version) { WidgetStore.load(context) }
                 val cats = snapshot.sortedCategories()
                 val selected = cats.firstOrNull { it.id == prefs[DataKeys.SELECTED_CATEGORY] } ?: cats.firstOrNull()
-                WidgetContent(context, selected?.name.orEmpty(), snapshot.itemsFor(selected?.id))
+                WidgetContent(context, selected?.name.orEmpty(), selected?.id, snapshot.itemsFor(selected?.id))
             }
         }
     }
 }
 
 @Composable
-private fun WidgetContent(context: Context, title: String, items: List<ShoppingItem>) {
+private fun WidgetContent(context: Context, title: String, id: String?, items: List<ShoppingItem>) {
     Column(
         modifier = GlanceModifier.fillMaxSize()
             .background(GlanceTheme.colors.background)
@@ -124,7 +127,11 @@ private fun WidgetContent(context: Context, title: String, items: List<ShoppingI
             )
             Text(
                 text = title,
-                modifier = GlanceModifier.defaultWeight(),
+                modifier = GlanceModifier.defaultWeight().clickable(
+                    if (id != null)
+                        actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
+                    else actionStartActivity<MainActivity>()
+                ),
                 style = TextStyle(
                     color = GlanceTheme.colors.primary,
                     fontWeight = FontWeight.Bold, textAlign = TextAlign.Center

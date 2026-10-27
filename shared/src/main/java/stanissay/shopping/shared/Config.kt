@@ -37,6 +37,7 @@ object DataKeys {
     const val STOP_AT = "stop_at"
     const val SNAPSHOT = "snapshot"
     const val SHOPPING_ACTIVITY = "Shopping activity"
+    const val CATEGORY_ID = "category_id"
     val HASH_ID = "StanissayShoppingList".hashCode().absoluteValue
     val SELECTED_CATEGORY = stringPreferencesKey("selected_category")
     val SNAPSHOT_VERSION = longPreferencesKey("snapshot_version")

@@ -179,9 +179,13 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModelA by viewModels {
         MainViewModelFactory(application, AndroidStringProvider(applicationContext))
     }
+    private var requestedCategoryId by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) {
+            requestedCategoryId = intent?.getStringExtra(DataKeys.CATEGORY_ID)
+        }
         setContent {
             val isLoading by viewModel.sharedViewModel.isLoading.collectAsState()
             MainTheme {
@@ -192,7 +196,11 @@ class MainActivity : ComponentActivity() {
                         .windowInsetsPadding(WindowInsets.safeDrawing)
                         .padding(PaddingStyle.xs)
                 ) {
-                    MainList(viewModel)
+                    MainList(
+                        viewModel = viewModel,
+                        requestedCategoryId = requestedCategoryId,
+                        onCategoryHandled = { requestedCategoryId = null }
+                    )
                     if(isLoading) CircularBar()
                 }
             }
@@ -205,6 +213,12 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         NotificationManagerCompat.from(this).cancel(DataKeys.NEW_ITEMS_NOTIFICATION_ID)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        requestedCategoryId = intent.getStringExtra(DataKeys.CATEGORY_ID)
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { startSyncService() }
@@ -251,7 +265,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainList(viewModel: MainViewModelA) {
+fun MainList(
+    viewModel: MainViewModelA,
+    requestedCategoryId: String? = null,
+    onCategoryHandled: () -> Unit = {}
+) {
     val context = LocalContext.current
     val activity = context as Activity
     val clipboard = LocalClipboard.current
@@ -275,6 +293,14 @@ fun MainList(viewModel: MainViewModelA) {
         },
         canDragOver = { _, _ -> true }
     )
+
+    LaunchedEffect(requestedCategoryId, categories) {
+        val id = requestedCategoryId ?: return@LaunchedEffect
+        if (categories.isEmpty()) return@LaunchedEffect
+        val index = categories.indexOfFirst { it.id == id }
+        if (index >= 0) pagerState.scrollToPage(index)
+        onCategoryHandled()
+    }
 
     LaunchedEffect(Unit) {
         AppEventManager.uiEvents.collect { event ->
