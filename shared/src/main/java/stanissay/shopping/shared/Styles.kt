@@ -59,4 +59,6 @@ object MainConstants {
     val NULL = 0.dp
 
     const val ANIMATION_MS = 300
+
+    const val TILE_LARGE_SCREEN_DP = 225
 }

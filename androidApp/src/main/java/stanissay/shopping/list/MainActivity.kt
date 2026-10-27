@@ -160,8 +160,10 @@ import stanissay.shopping.list.utils.PlusBtn
 import stanissay.shopping.list.utils.SelectionText
 import stanissay.shopping.list.utils.TextDropdownMenu
 import stanissay.shopping.list.utils.VerticalScrollBar
+import stanissay.shopping.list.utils.WatchBtn
 import stanissay.shopping.shared.AndroidStringProvider
 import stanissay.shopping.shared.AppEventManager
+import stanissay.shopping.shared.Config
 import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.GoogleAuth
 import stanissay.shopping.shared.MainColors
@@ -281,6 +283,7 @@ fun MainList(
     val pagerState = rememberPagerState(pageCount = { categories.size })
     val activeCategory = categories.getOrNull(pagerState.currentPage)
     var versionExpanded by remember { mutableStateOf(false) }
+
     val reorderState = rememberReorderableLazyListState(
         onMove = { from, to ->
             viewModel.sharedViewModel.moveCategory(from.index, to.index)
@@ -351,7 +354,12 @@ fun MainList(
                 title = {
                     ClickableBox(
                         onLongClick = { versionExpanded = !versionExpanded }
-                    ) { PageTitle(stringResource(R.string.app_name)) }
+                    ) {
+                        PageTitle(
+                            text = stringResource(R.string.app_name),
+                            modifier = Modifier.padding(PaddingStyle.xs)
+                        )
+                    }
                 },
                 actions = {
                     AnimatedVisibility(
@@ -364,6 +372,7 @@ fun MainList(
                             text = "${stringResource(R.string.version)} $versionName"
                         )
                     }
+                    if(viewModel.sharedViewModel.watchHasApp) WatchBtn { viewModel.showWatchDialog() }
                     if(viewModel.sharedViewModel.shoppingCategories.isNotEmpty()) {
                         PasteBtn {
                             scope.launch {
@@ -544,6 +553,7 @@ fun MainList(
     if(viewModel.sharedViewModel.showItemDialog) ItemDialog(viewModel, activeCategory?.id) { viewModel.sharedViewModel.hideItemDialog() }
     if(viewModel.sharedViewModel.showCategoryDialog) CategoryDialog(viewModel) { viewModel.sharedViewModel.hideCategoryDialog() }
     if(viewModel.sharedViewModel.showLogoutDialog) LogoutDialog(viewModel) { viewModel.sharedViewModel.showLogoutDialog = false }
+    if(viewModel.watchDialogState) WatchDialog(viewModel)
 }
 
 @Composable
@@ -1342,6 +1352,45 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                             viewModel.logout()
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun WatchDialog(viewModel: MainViewModelA) {
+    val wearVersion = Config.wearVersion
+
+    Dialog(onDismissRequest = { viewModel.hideWatchDialog() }) {
+        MainCard(borderColor = MaterialTheme.colorScheme.outline) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
+                    contentAlignment = Alignment.Center
+                ) { DialogTitle(stringResource(R.string.watch)) }
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    MainText(
+                        "${stringResource(R.string.version)}: ${wearVersion ?: stringResource(R.string.unknown_version)}"
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.BASE_SIZE),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    CloseBtn { viewModel.hideWatchDialog() }
+                    Spacer(modifier = Modifier.size(Constants.BUTTON_SIZE))
                 }
             }
         }

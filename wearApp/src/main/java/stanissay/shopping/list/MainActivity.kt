@@ -300,7 +300,12 @@ fun MainScreen(viewModel: MainViewModelW, listState: TransformingLazyColumnState
                     ) {
                         ClickableBox(
                             onLongClick = { versionExpanded = !versionExpanded }
-                        ) { PageTitle(text = stringResource(R.string.app_name)) }
+                        ) {
+                            PageTitle(
+                                text = stringResource(R.string.app_name),
+                                modifier = Modifier.padding(PaddingStyle.xs)
+                            )
+                        }
                     }
                 }
                 categories

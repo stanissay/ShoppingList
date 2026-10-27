@@ -63,6 +63,7 @@ class SharedViewModel(private val strings: StringProvider) {
     private var backupShoppingCategories: List<ShoppingCategory>? = null
     var editItem by mutableStateOf<ShoppingItem?>(null)
     var editCategory by mutableStateOf<ShoppingCategory?>(null)
+    var watchHasApp by mutableStateOf(false)
     var showItemDialog by mutableStateOf(false)
     var showCategoryDialog by mutableStateOf(false)
     var showLogoutDialog by mutableStateOf(false)

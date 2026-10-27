@@ -13,10 +13,12 @@
     <string name="add_item">Додати товар</string>
     <string name="add_category">Додати категорію</string>
     <string name="insert">Вставити</string>
+    <string name="open">Відкрити</string>
     <string name="edit">Редагувати</string>
     <string name="delete">Видалити</string>
     <string name="purchased">Куплено</string>
     <string name="not_purchased">Не куплено</string>
+    <string name="all_items_purchased">Усе куплено</string>
     <string name="back">Назад</string>
     <string name="forward">Вперед</string>
     <string name="done">Підтвердити</string>
@@ -24,6 +26,7 @@
     <string name="name">Назва</string>
     <string name="note">Примітка</string>
     <string name="no_name">Введіть назву</string>
+    <string name="more">Ще</string>
     <string name="plus">Плюс</string>
     <string name="minus">Мінус</string>
     <string name="buy">Купити</string>

@@ -98,10 +98,10 @@ class ShoppingWidget : GlanceAppWidget() {
         provideContent {
             GlanceTheme(colors = WidgetColorStyle) {
                 val prefs = currentState<Preferences>()
-                val version = prefs[DataKeys.SNAPSHOT_VERSION]
+                val version = prefs[DataKeys.SNAPSHOT_VERSION_KEY]
                 val snapshot = remember(version) { WidgetStore.load(context) }
                 val cats = snapshot.sortedCategories()
-                val selected = cats.firstOrNull { it.id == prefs[DataKeys.SELECTED_CATEGORY] } ?: cats.firstOrNull()
+                val selected = cats.firstOrNull { it.id == prefs[DataKeys.SELECTED_CATEGORY_KEY] } ?: cats.firstOrNull()
                 WidgetContent(context, selected?.name.orEmpty(), selected?.id, snapshot.itemsFor(selected?.id))
             }
         }
@@ -144,16 +144,31 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                 colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
             )
         }
-        LazyColumn {
-            items(items, itemId = { it.id.hashCode().toLong() }) { item ->
-                CheckBox(
-                    checked = false,
-                    onCheckedChange = actionRunCallback<ToggleItemAction>(
-                        actionParametersOf(ITEM_KEY to item.id)),
-                    text = listOfNotNull(item.name, item.quantity).joinToString(" - "),
-                    style = TextStyle(color = GlanceTheme.colors.onBackground)
-                )
+        if(items.isNotEmpty()) {
+            LazyColumn {
+                items(items, itemId = { it.id.hashCode().toLong() }) { item ->
+                    CheckBox(
+                        checked = false,
+                        onCheckedChange = actionRunCallback<ToggleItemAction>(
+                            actionParametersOf(ITEM_KEY to item.id)),
+                        text = listOfNotNull(item.name, item.quantity).joinToString(" - "),
+                        style = TextStyle(color = GlanceTheme.colors.onBackground)
+                    )
+                }
             }
+        } else {
+            Text(
+                text = context.getString(R.string.all_items_purchased),
+                modifier = GlanceModifier.fillMaxSize().clickable(
+                    if (id != null)
+                        actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
+                    else actionStartActivity<MainActivity>()
+                ),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onBackground,
+                    textAlign = TextAlign.Center
+                )
+            )
         }
     }
 }
@@ -167,8 +182,8 @@ class ChangeCategoryAction : ActionCallback {
         val dir = parameters[DIR_KEY] ?: return
         val snapshot = WidgetStore.load(context)
         updateAppWidgetState(context, glanceId) { prefs ->
-            snapshot.cycle(prefs[DataKeys.SELECTED_CATEGORY], dir)?.let {
-                prefs[DataKeys.SELECTED_CATEGORY] = it
+            snapshot.cycle(prefs[DataKeys.SELECTED_CATEGORY_KEY], dir)?.let {
+                prefs[DataKeys.SELECTED_CATEGORY_KEY] = it
             }
         }
         ShoppingWidget().update(context, glanceId)
@@ -190,7 +205,7 @@ suspend fun refreshWidgets(context: Context) {
     val ids = GlanceAppWidgetManager(context).getGlanceIds(ShoppingWidget::class.java)
     ids.forEach { id ->
         updateAppWidgetState(context, id) { prefs ->
-            prefs[DataKeys.SNAPSHOT_VERSION] = (prefs[DataKeys.SNAPSHOT_VERSION] ?: 0L) + 1
+            prefs[DataKeys.SNAPSHOT_VERSION_KEY] = (prefs[DataKeys.SNAPSHOT_VERSION_KEY] ?: 0L) + 1
         }
     }
     ShoppingWidget().updateAll(context)

@@ -17,10 +17,15 @@ package stanissay.shopping.list
 
 import android.app.Application
 import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import stanissay.shopping.list.utils.DeviceInfo
 import stanissay.shopping.shared.ServerClock
 
 class MyApplication : Application() {
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         DeviceInfo.init()

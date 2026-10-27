@@ -10,6 +10,7 @@ fragment = "1.9.1"
 glanceAppwidget = "1.2.0"
 googleid = "1.2.1"
 kotlinxCoroutinesCore = "1.11.0"
+kotlinxCoroutinesGuava = "1.11.0"
 kotlinxCoroutinesPlayServices = "1.11.0"
 kotlinxSerializationJson = "1.12.0"
 lifecycleRuntimeKtx = "2.11.0"
@@ -18,16 +19,25 @@ kotlin = "2.4.21"
 composeBom = "2026.09.00"
 burnoutcrew = "0.9.6"
 playServicesWearable = "20.0.1"
+protolayout = "1.4.2"
+protolayoutExpression = "1.4.2"
+protolayoutMaterial3 = "1.4.2"
+tiles = "1.6.2"
 uiUtil = "1.12.2"
 material3 = "1.4.0"
 foundationVersion = "1.12.1"
 composeMaterial3 = "1.7.1"
 composeFoundation = "1.7.1"
+watchface = "1.3.0-alpha07"
+watchfaceComplicationsDataSourceKtx = "1.3.0"
+watchfaceComplicationsRendering = "1.3.0-alpha07"
 wear = "1.4.0"
 wearOngoing = "1.1.0"
 coreSplashscreen = "1.2.0"
 appcompat = "1.8.0"
 lifecycleProcess = "2.11.0"
+workRuntimeKtx = "2.12.0"
+composeMaterialCore = "1.7.1"
 
 [libraries]
 androidx-core = { module = "androidx.core:core", version.ref = "coreKtx" }
@@ -45,6 +55,13 @@ androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", versi
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-protolayout = { module = "androidx.wear.protolayout:protolayout", version.ref = "protolayout" }
+androidx-protolayout-expression = { module = "androidx.wear.protolayout:protolayout-expression", version.ref = "protolayoutExpression" }
+androidx-protolayout-material3 = { module = "androidx.wear.protolayout:protolayout-material3", version.ref = "protolayoutMaterial3" }
+androidx-tiles = { module = "androidx.wear.tiles:tiles", version.ref = "tiles" }
+androidx-watchface = { module = "androidx.wear.watchface:watchface", version.ref = "watchface" }
+androidx-watchface-complications-data-source-ktx = { module = "androidx.wear.watchface:watchface-complications-data-source-ktx", version.ref = "watchfaceComplicationsDataSourceKtx" }
+androidx-watchface-complications-rendering = { module = "androidx.wear.watchface:watchface-complications-rendering", version.ref = "watchfaceComplicationsRendering" }
 androidx-wear = { module = "androidx.wear:wear", version.ref = "wear" }
 androidx-wear-ongoing = { module = "androidx.wear:wear-ongoing", version.ref = "wearOngoing" }
 burnoutcrew-reordable = { module = "org.burnoutcrew.composereorderable:reorderable", version.ref = "burnoutcrew" }
@@ -56,6 +73,7 @@ firebase-database = { module = "com.google.firebase:firebase-database" }
 foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "foundation" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
+kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "kotlinxCoroutinesGuava" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "playServicesWearable" }
@@ -67,6 +85,8 @@ compose-foundation = { group = "androidx.wear.compose", name = "compose-foundati
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
+androidx-compose-material-core = { group = "androidx.wear.compose", name = "compose-material-core", version.ref = "composeMaterialCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

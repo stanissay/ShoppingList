@@ -17,17 +17,23 @@ package stanissay.shopping.list
 
 import android.annotation.SuppressLint
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import stanissay.shopping.list.utils.watchHasApp
 import stanissay.shopping.shared.AppEventManager
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.SharedViewModel
 import stanissay.shopping.shared.StringProvider
 import stanissay.shopping.shared.UiEvent
+import stanissay.shopping.shared.WearRoutes
 
 class MainViewModelA(app: Application, val strings: StringProvider) : AndroidViewModel(app) {
     val sharedViewModel = SharedViewModel(strings)
+    val wearManager = WearManagerA(app)
 
     fun sendUiEvent(event: UiEvent) { AppEventManager.sendEvent(event) }
 
@@ -55,8 +61,19 @@ class MainViewModelA(app: Application, val strings: StringProvider) : AndroidVie
         }
     }
 
+    var watchDialogState by mutableStateOf(false)
+    fun showWatchDialog() {
+        viewModelScope.launch {
+            wearManager.sendMessageToWatch("", WearRoutes.VERSION)
+        }
+        watchDialogState = true
+    }
+    fun hideWatchDialog() { watchDialogState = false }
+
     init {
         viewModelScope.launch {
+            sharedViewModel.watchHasApp = app.watchHasApp()
+            wearManager.sendMessageToWatch("", WearRoutes.VERSION)
             sharedViewModel.messages.collect { message ->
                 sendUiEvent(UiEvent.ShowToast(message))
             }

@@ -26,6 +26,18 @@
                 android:value="Persistent connection to the Firebase for real-time notifications" />
         </service>
 
+        <service
+            android:name=".MessageServiceA"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+
+                <data
+                    android:scheme="wear"
+                    android:host="*" />
+            </intent-filter>
+        </service>
+
         <receiver android:name=".ShoppingWidgetReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
