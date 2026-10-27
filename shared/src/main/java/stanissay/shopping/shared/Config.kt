@@ -15,6 +15,7 @@
 
 package stanissay.shopping.shared
 
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.firebase.Firebase
 import com.google.firebase.database.DataSnapshot
@@ -34,9 +35,11 @@ object DataKeys {
     const val ACTION_CONNECT_NOW = "CONNECT_NOW"
     const val OUTGOING_CHANNEL_ID = "shopping_activity"
     const val STOP_AT = "stop_at"
+    const val SNAPSHOT = "snapshot"
     const val SHOPPING_ACTIVITY = "Shopping activity"
     val HASH_ID = "StanissayShoppingList".hashCode().absoluteValue
     val SELECTED_CATEGORY = stringPreferencesKey("selected_category")
+    val SNAPSHOT_VERSION = longPreferencesKey("snapshot_version")
     const val FGS_CHANNEL = "foreground_channel"
     const val NEW_ITEMS_CHANNEL = "new_items_notification_channel"
     const val OUTGOING_NOTIFICATION_ID = 1001

@@ -16,14 +16,14 @@
 package stanissay.shopping.list
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
-import android.provider.Settings
+import android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -123,7 +123,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -194,6 +197,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        startSyncService()
         ensureNotificationPermission()
         ensureBatteryOptimizationExemption()
     }
@@ -203,40 +207,27 @@ class MainActivity : ComponentActivity() {
         NotificationManagerCompat.from(this).cancel(DataKeys.NEW_ITEMS_NOTIFICATION_ID)
     }
 
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if(granted) startNotificationsService()
-    }
+    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { startSyncService() }
 
     private fun ensureNotificationPermission() {
         val permission = Manifest.permission.POST_NOTIFICATIONS
-
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
-            startNotificationsService()
-            return
-        }
-
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) return
         val prefs = getSharedPreferences(DataKeys.APP_SETTINGS, MODE_PRIVATE)
-        val alreadyAsked = prefs.getBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, false)
-
-        if (!alreadyAsked) {
-            prefs.edit { putBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, true) }
-            notificationPermissionLauncher.launch(permission)
-        }
+        if (prefs.getBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, false)) return
+        prefs.edit { putBoolean(DataKeys.NOTIFICATIONS_PERMISSION_ASKED, true) }
+        notificationPermissionLauncher.launch(permission)
     }
 
-    private fun startNotificationsService() {
-        val intent = Intent(this, NotificationsService::class.java).apply {
-            action = DataKeys.ACTION_CONNECT_NOW
-        }
-
-        startForegroundService(intent)
+    private fun startSyncService() {
+        if (Firebase.auth.currentUser == null) return
+        startForegroundService(Intent(this, SyncService::class.java).setAction(DataKeys.ACTION_CONNECT_NOW))
     }
 
+    @SuppressLint("BatteryLife")
     private fun ensureBatteryOptimizationExemption() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         val packageName = packageName
         val prefs = getSharedPreferences(DataKeys.APP_SETTINGS, MODE_PRIVATE)
-
         val alreadyAsked = prefs.getBoolean(DataKeys.BATTERY_EXEMPTION_ASKED, false)
         if (alreadyAsked) return
 
@@ -245,10 +236,8 @@ class MainActivity : ComponentActivity() {
                 .setTitle(this.getString(R.string.work_in_back))
                 .setMessage(this.getString(R.string.work_in_back_message))
                 .setPositiveButton(this.getString(R.string.go_to_settings)) { _, _ ->
-                    val intent = Intent().apply {
-                        action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                        data = Uri.fromParts("package", packageName, null)
-                    }
+                    val intent = Intent(ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        .setData("package:$packageName".toUri())
                     startActivity(intent)
                     prefs.edit { putBoolean(DataKeys.BATTERY_EXEMPTION_ASKED, true) }
                 }
@@ -365,7 +354,7 @@ fun MainList(viewModel: MainViewModelA) {
                                     viewModel.login()
                                     ContextCompat.startForegroundService(
                                         context,
-                                        Intent(context, NotificationsService::class.java).setAction(DataKeys.ACTION_CONNECT_NOW)
+                                        Intent(context, SyncService::class.java).setAction(DataKeys.ACTION_CONNECT_NOW)
                                     )
                                 }.onFailure { error ->
                                     snackbarHostState.showSnackbar(
@@ -1322,7 +1311,7 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     CloseBtn { onDismiss() }
                     DoneBtn {
                         scope.launch {
-                            activity.stopService(Intent(activity, NotificationsService::class.java))
+                            activity.stopService(Intent(activity, SyncService::class.java))
                             GoogleAuth(activity).signOut()
                             viewModel.logout()
                         }

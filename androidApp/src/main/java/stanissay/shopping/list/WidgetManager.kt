@@ -1,7 +1,23 @@
+/*
+ * Shopping List For Android and Wear Os
+ * Copyright (C) 2026 [stanissay]
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 package stanissay.shopping.list
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.core.content.edit
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.ColorFilter
@@ -15,6 +31,7 @@ import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.CheckBox
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
@@ -37,19 +54,17 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
-import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import stanissay.shopping.list.WidgetStore.DIR_KEY
 import stanissay.shopping.list.WidgetStore.ITEM_KEY
 import stanissay.shopping.list.utils.Constants
 import stanissay.shopping.list.utils.WidgetColorStyle
 import stanissay.shopping.shared.DataKeys
+import stanissay.shopping.shared.ListSnapshot
 import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.R
-import stanissay.shopping.shared.ShoppingCategory
+import stanissay.shopping.shared.SharedSyncService
 import stanissay.shopping.shared.ShoppingItem
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -59,38 +74,35 @@ object WidgetStore {
     val DIR_KEY = ActionParameters.Key<Int>("dir")
     val ITEM_KEY = ActionParameters.Key<String>("item")
 
-    fun saveItems(context: Context, items: List<ShoppingItem>) = prefs(context).edit {
-        putString("items", json.encodeToString(ListSerializer(ShoppingItem.serializer()), items))
+    fun save(context: Context, snapshot: ListSnapshot) = prefs(context).edit {
+        putString(DataKeys.SNAPSHOT, json.encodeToString(ListSnapshot.serializer(), snapshot))
     }
-    fun saveCategories(context: Context, cats: List<ShoppingCategory>) = prefs(context).edit {
-        putString("categories", json.encodeToString(ListSerializer(ShoppingCategory.serializer()), cats))
+
+    fun load(context: Context): ListSnapshot =
+        prefs(context).getString(DataKeys.SNAPSHOT, null)
+            ?.let { runCatching { json.decodeFromString(ListSnapshot.serializer(), it) }.getOrNull() } ?: ListSnapshot()
+
+    fun remove(context: Context, id: String) {
+        val s = load(context)
+        save(context, s.copy(items = s.items.filter { it.id != id }))
     }
-    fun items(context: Context): List<ShoppingItem> = prefs(context).getString("items", null)
-        ?.let { json.decodeFromString(ListSerializer(ShoppingItem.serializer()), it) }.orEmpty()
-    fun categories(context: Context): List<ShoppingCategory> = prefs(context).getString("categories", null)
-        ?.let { json.decodeFromString(ListSerializer(ShoppingCategory.serializer()), it) }.orEmpty()
-    fun remove(context: Context, id: String) = saveItems(context, items(context).filter { it.id != id })
 }
 
 class ShoppingWidget : GlanceAppWidget() {
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val cats = WidgetStore.categories(context).sortedBy { it.order }
-        val items = WidgetStore.items(context)
         provideContent {
             GlanceTheme(colors = WidgetColorStyle) {
                 val prefs = currentState<Preferences>()
+                val version = prefs[DataKeys.SNAPSHOT_VERSION]
+                val snapshot = remember(version) { WidgetStore.load(context) }
+                val cats = snapshot.sortedCategories()
                 val selected = cats.firstOrNull { it.id == prefs[DataKeys.SELECTED_CATEGORY] } ?: cats.firstOrNull()
-                val list = items.filter { it.categoryId == selected?.id }.sortedBy { it.order }
-                WidgetContent(context, selected?.name.orEmpty(), list)
+                WidgetContent(context, selected?.name.orEmpty(), snapshot.itemsFor(selected?.id))
             }
         }
     }
-}
-
-class ShoppingWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = ShoppingWidget()
 }
 
 @Composable
@@ -139,14 +151,18 @@ private fun WidgetContent(context: Context, title: String, items: List<ShoppingI
     }
 }
 
+class ShoppingWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget = ShoppingWidget()
+}
+
 class ChangeCategoryAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val dir = parameters[DIR_KEY] ?: return
-        val cats = WidgetStore.categories(context).sortedBy { it.order }
-        if (cats.isEmpty()) return
+        val snapshot = WidgetStore.load(context)
         updateAppWidgetState(context, glanceId) { prefs ->
-            val cur = cats.indexOfFirst { it.id == prefs[DataKeys.SELECTED_CATEGORY] }.coerceAtLeast(0)
-            prefs[DataKeys.SELECTED_CATEGORY] = cats[(cur + dir + cats.size) % cats.size].id
+            snapshot.cycle(prefs[DataKeys.SELECTED_CATEGORY], dir)?.let {
+                prefs[DataKeys.SELECTED_CATEGORY] = it
+            }
         }
         ShoppingWidget().update(context, glanceId)
     }
@@ -156,10 +172,19 @@ class ToggleItemAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val id = parameters[ITEM_KEY] ?: return
         WidgetStore.remove(context, id)
-        ShoppingWidget().updateAll(context)
+        refreshWidgets(context)
         withTimeoutOrNull(5000.milliseconds) {
-            FirebaseDatabase.getInstance().reference
-                .child("items/$id/done").setValue(true).await()
+            SharedSyncService().markDone(id)
         }
     }
+}
+
+suspend fun refreshWidgets(context: Context) {
+    val ids = GlanceAppWidgetManager(context).getGlanceIds(ShoppingWidget::class.java)
+    ids.forEach { id ->
+        updateAppWidgetState(context, id) { prefs ->
+            prefs[DataKeys.SNAPSHOT_VERSION] = (prefs[DataKeys.SNAPSHOT_VERSION] ?: 0L) + 1
+        }
+    }
+    ShoppingWidget().updateAll(context)
 }

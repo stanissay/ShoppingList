@@ -31,7 +31,7 @@
     <string name="duplicate_category">Категорія вже існує</string>
     <string name="no_notifications">Сповіщення не працюватимуть без дозволу</string>
     <string name="work_in_back">Фонова робота додатку</string>
-    <string name="work_in_back_message">Щоб додаток отримував миттєві сповіщення про нові товари, необхідно вимкнути оптимізацію батареї для цього додатку</string>
+    <string name="work_in_back_message">Щоб додаток отримував миттєві оновлення віджетів та сповіщення, необхідно вимкнути оптимізацію батареї для цього додатку</string>
     <string name="background_service">Фоновий сервіс</string>
     <string name="background_service_message">Це сповіщення потрібне для роботи сервісу. Можна вимкнути</string>
     <string name="go_to_settings">Перейти до налаштувань</string>

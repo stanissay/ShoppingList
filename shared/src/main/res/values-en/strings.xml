@@ -31,7 +31,7 @@
     <string name="duplicate_category">Category already exists</string>
     <string name="no_notifications">Notifications will not work without permission</string>
     <string name="work_in_back">App background operation</string>
-    <string name="work_in_back_message">To ensure the app receives instant notifications about new products, you need to disable battery optimization for this app</string>
+    <string name="work_in_back_message">To ensure the app receives instant widget updates and notifications, you must disable battery optimization for this app</string>
     <string name="background_service">Background service</string>
     <string name="background_service_message">This notification is required for the service to function. It can be disabled</string>
     <string name="go_to_settings">Go to settings</string>

@@ -117,10 +117,7 @@ class SharedViewModel(private val strings: StringProvider) {
 
     private val categoriesListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val categories = snapshot.children.mapNotNull { child ->
-                val category = child.getValue(ShoppingCategory::class.java)
-                category?.copy(id = child.key ?: return@mapNotNull null)
-            }
+            val categories = parseCategories(snapshot)
             sortCategories(categories)
             categoriesLoaded = true
             updateLoadingState()
@@ -132,10 +129,7 @@ class SharedViewModel(private val strings: StringProvider) {
     }
     private val itemsListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            val items = snapshot.children.mapNotNull { child ->
-                val item = child.getValue(ShoppingItem::class.java)
-                item?.copy(id = child.key ?: return@mapNotNull null)
-            }
+            val items = parseItems(snapshot)
             sortItems(items)
             itemsLoaded = true
             updateLoadingState()
