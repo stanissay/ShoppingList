@@ -75,6 +75,9 @@ data class ListSnapshot(
     }
 }
 
+fun ShoppingItem.displayLabel(separator: String = " · "): String =
+    listOfNotNull(name, quantity?.takeIf { it.isNotBlank() }).joinToString(separator)
+
 sealed class UiEvent {
     data class ShowToast(val message: String) : UiEvent()
     data class ShowSnackbar(val message: String) : UiEvent()

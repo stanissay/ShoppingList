@@ -61,6 +61,7 @@ object DataKeys {
     const val ID_PREV = "prev"
     const val ID_NEXT = "next"
     const val ID_DONE = "done"
+    const val ID_OPEN = "open"
     const val ICON_LEFT = "arrow_left"
     const val ICON_RIGHT = "arrow_right"
 }

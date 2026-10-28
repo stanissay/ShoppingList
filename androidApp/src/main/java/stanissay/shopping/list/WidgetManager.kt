@@ -68,6 +68,7 @@ import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.SharedSyncService
 import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.displayLabel
 import kotlin.time.Duration.Companion.milliseconds
 
 object WidgetStore {
@@ -151,7 +152,7 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                         checked = false,
                         onCheckedChange = actionRunCallback<ToggleItemAction>(
                             actionParametersOf(ITEM_KEY to item.id)),
-                        text = listOfNotNull(item.name, item.quantity).joinToString(" - "),
+                        text = item.displayLabel(),
                         style = TextStyle(color = GlanceTheme.colors.onBackground)
                     )
                 }

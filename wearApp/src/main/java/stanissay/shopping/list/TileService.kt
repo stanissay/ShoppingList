@@ -13,54 +13,46 @@
  * GNU General Public License for more details.
  */
 
+@file:Suppress("DEPRECATION")
+
 package stanissay.shopping.list
 
 import android.content.ComponentName
 import android.content.Context
 import androidx.core.content.edit
+import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ActionBuilders.launchAction
+import androidx.wear.protolayout.ColorBuilders
 import androidx.wear.protolayout.DeviceParametersBuilders
+import androidx.wear.protolayout.DimensionBuilders.dp
 import androidx.wear.protolayout.DimensionBuilders.expand
-import androidx.wear.protolayout.DimensionBuilders.wrap
 import androidx.wear.protolayout.LayoutElementBuilders
+import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.TimelineBuilders
-import androidx.wear.protolayout.material3.ButtonGroupDefaults.DEFAULT_SPACER_BETWEEN_BUTTON_GROUPS
-import androidx.wear.protolayout.material3.buttonGroup
-import androidx.wear.protolayout.material3.compactButton
-import androidx.wear.protolayout.material3.icon
 import androidx.wear.protolayout.material3.materialScope
 import androidx.wear.protolayout.material3.primaryLayout
 import androidx.wear.protolayout.material3.text
-import androidx.wear.protolayout.material3.textButton
-import androidx.wear.protolayout.material3.textEdgeButton
+import androidx.wear.protolayout.material3.Typography
 import androidx.wear.protolayout.modifiers.clickable
-import androidx.wear.protolayout.modifiers.loadAction
 import androidx.wear.protolayout.types.layoutString
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
-import androidx.work.Constraints
-import androidx.work.CoroutineWorker
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
 import kotlinx.serialization.json.Json
+import stanissay.shopping.list.utils.ColorStyle
+import stanissay.shopping.list.utils.tileColorScheme
 import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.ListSnapshot
 import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.R
-import stanissay.shopping.shared.SharedSyncService
 import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.displayLabel
 
 class TileStore(context: Context) {
     private val sp = context.applicationContext.getSharedPreferences(DataKeys.TILE_PREFS, Context.MODE_PRIVATE)
@@ -77,11 +69,6 @@ class TileStore(context: Context) {
     var selectedCategory: String?
         get() = sp.getString(DataKeys.SELECTED_CATEGORY, null)
         set(v) = sp.edit { putString(DataKeys.SELECTED_CATEGORY, v) }
-
-    fun remove(id: String) {
-        val s = snapshot()
-        save(s.copy(items = s.items.filter { it.id != id }))
-    }
 }
 
 class ShoppingTileService : TileService() {
@@ -109,23 +96,10 @@ class ShoppingTileService : TileService() {
     }
 
     private fun handleClick(id: String?, store: TileStore) {
-        when {
-            id.isNullOrEmpty() -> Unit
-            id == DataKeys.ID_PREV || id == DataKeys.ID_NEXT -> {
+        when (id) {
+            DataKeys.ID_PREV, DataKeys.ID_NEXT -> {
                 val dir = if (id == DataKeys.ID_NEXT) 1 else -1
                 store.selectedCategory = store.snapshot().cycle(store.selectedCategory, dir)
-            }
-            id.startsWith(DataKeys.ID_DONE) -> {
-                val itemId = id.removePrefix(DataKeys.ID_DONE)
-                store.remove(itemId)
-                WorkManager.getInstance(this).enqueueUniqueWork(
-                    "done_$itemId", ExistingWorkPolicy.KEEP,
-                    OneTimeWorkRequestBuilder<MarkDoneWorker>()
-                        .setInputData(workDataOf("id" to itemId))
-                        .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
-                        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                        .build()
-                )
             }
         }
     }
@@ -152,83 +126,142 @@ fun shoppingTileLayout(
     deviceParameters: DeviceParametersBuilders.DeviceParameters,
     categoryName: String,
     items: List<ShoppingItem>
-) = materialScope(context, deviceParameters, allowDynamicTheme = false) {
-    val rows = if (deviceParameters.screenWidthDp >= MainConstants.TILE_LARGE_SCREEN_DP) 3 else 2
+) = materialScope(
+    context = context,
+    deviceConfiguration = deviceParameters,
+    allowDynamicTheme = false,
+    defaultColorScheme = tileColorScheme(ColorStyle)
+) {
+    val rows = if (deviceParameters.screenWidthDp >= MainConstants.TILE_LARGE_SCREEN_DP) 5 else 4
+    val more = (items.size - rows).coerceAtLeast(0)
+
     primaryLayout(
-        titleSlot = { text(categoryName.layoutString) },
-        mainSlot = {
-            LayoutElementBuilders.Column.Builder().apply {
-                setWidth(expand()); setHeight(expand())
-                addContent(
-                    buttonGroup(
-                        width = wrap(),
-                        height = wrap()
-                    ) {
-                        buttonGroupItem {
-                            compactButton(
-                                onClick = clickable(id = DataKeys.ID_PREV, action = loadAction()),
-                                iconContent = { icon(DataKeys.ICON_LEFT) }
-                            )
-                        }
-                        buttonGroupItem {
-                            compactButton(
-                                onClick = clickable(id = DataKeys.ID_NEXT, action = loadAction()),
-                                iconContent = { icon(DataKeys.ICON_RIGHT) }
-                            )
-                        }
-                    }
-                )
-                if (items.isEmpty()) {
-                    addContent(DEFAULT_SPACER_BETWEEN_BUTTON_GROUPS)
-                    addContent(text(context.getString(R.string.all_items_purchased).layoutString))
-                }
-                items.take(rows).forEach { item ->
-                    addContent(DEFAULT_SPACER_BETWEEN_BUTTON_GROUPS)
-                    addContent(
-                        textButton(
-                            onClick = clickable(
-                                id = DataKeys.ID_DONE + item.id,
-                                action = loadAction()
-                            ),
-                            labelContent = {
-                                text(listOfNotNull(item.name, item.quantity).joinToString(" · ").layoutString)
-                            },
-                            width = expand()
-                        )
-                    )
-                }
-            }.build()
-        },
-        bottomSlot = {
-            textEdgeButton(
-                onClick = clickable(
-                    id = "open",
-                    action = launchAction(
-                        ComponentName(context, MainActivity::class.java)
-                    )
-                ),
-                labelContent = {
-                    val more = (items.size - rows).coerceAtLeast(0)
-                    text((if (more > 0) "${context.getString(R.string.more)} $more" else context.getString(R.string.open)).layoutString)
-                }
+        titleSlot = {
+            text(
+                categoryName.layoutString,
+                typography = Typography.TITLE_SMALL,
+                color = colorScheme.primary,
+                maxLines = 1
             )
+        },
+        mainSlot = {
+            LayoutElementBuilders.Row.Builder()
+                .setWidth(expand())
+                .setHeight(expand())
+                .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+                .addContent(arrow(DataKeys.ICON_LEFT, DataKeys.ID_PREV, colorScheme.secondary.prop))
+                .addContent(
+                    listBox(
+                        backgroundColor = colorScheme.background.prop,
+                        borderColor = colorScheme.outline.prop,
+                        onClick = clickable(
+                            id = DataKeys.ID_OPEN,
+                            action = launchAction(ComponentName(context, MainActivity::class.java))
+                        ),
+                        content = LayoutElementBuilders.Column.Builder().apply {
+                            setWidth(expand())
+                            setHorizontalAlignment(
+                                if (items.isEmpty()) LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER
+                                else LayoutElementBuilders.HORIZONTAL_ALIGN_START
+                            )
+                            if (items.isEmpty()) {
+                                addContent(
+                                    text(
+                                        text = context.getString(R.string.all_items_purchased).layoutString,
+                                        typography = Typography.BODY_SMALL,
+                                        color = colorScheme.onBackground,
+                                        maxLines = 2
+                                    )
+                                )
+                            }
+                            items.take(rows).forEach { item ->
+                                addContent(
+                                    text(
+                                        text = item.displayLabel().layoutString,
+                                        typography = Typography.BODY_SMALL,
+                                        color = colorScheme.onBackground,
+                                        maxLines = 1
+                                    )
+                                )
+                            }
+                            if (more > 0) {
+                                addContent(
+                                    text(
+                                        text = "${R.string.more} $more".layoutString,
+                                        typography = Typography.LABEL_SMALL,
+                                        color = colorScheme.onSurface
+                                    )
+                                )
+                            }
+                        }.build()
+                    )
+                )
+                .addContent(arrow(DataKeys.ICON_RIGHT, DataKeys.ID_NEXT, colorScheme.secondary.prop))
+                .build()
         }
     )
 }
 
+private fun listBox(
+    backgroundColor: ColorBuilders.ColorProp,
+    borderColor: ColorBuilders.ColorProp,
+    onClick: ModifiersBuilders.Clickable,
+    content: LayoutElementBuilders.LayoutElement
+): LayoutElementBuilders.LayoutElement =
+    LayoutElementBuilders.Box.Builder()
+        .setWidth(expand())
+        .setHeight(expand())
+        .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_START)
+        .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+        .setModifiers(
+            ModifiersBuilders.Modifiers.Builder()
+                .setBackground(
+                    ModifiersBuilders.Background.Builder()
+                        .setColor(backgroundColor)
+                        .setCorner(ModifiersBuilders.Corner.Builder().setRadius(dp(4f)).build())
+                        .build()
+                )
+                .setBorder(
+                    ModifiersBuilders.Border.Builder()
+                        .setWidth(dp(1f))
+                        .setColor(borderColor)
+                        .build()
+                )
+                .setPadding(ModifiersBuilders.Padding.Builder().setAll(dp(2f)).build())
+                .setClickable(onClick)
+                .build()
+        )
+        .addContent(content)
+        .build()
+
+private fun arrow(resId: String, clickId: String, tint: ColorBuilders.ColorProp): LayoutElementBuilders.LayoutElement =
+    LayoutElementBuilders.Box.Builder()
+        .setWidth(dp(32f)).setHeight(dp(32f))
+        .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
+        .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+        .setModifiers(
+            ModifiersBuilders.Modifiers.Builder()
+                .setClickable(
+                    ModifiersBuilders.Clickable.Builder()
+                        .setId(clickId)
+                        .setOnClick(ActionBuilders.LoadAction.Builder().build())
+                        .build()
+                ).build()
+        )
+        .addContent(
+            LayoutElementBuilders.Image.Builder()
+                .setResourceId(resId)
+                .setWidth(dp(16f)).setHeight(dp(16f))
+                .setColorFilter(
+                    LayoutElementBuilders.ColorFilter.Builder()
+                        .setTint(tint)
+                        .build()
+                )
+                .build()
+        )
+        .build()
+
 fun updateTileSnapshot(context: Context, snapshot: ListSnapshot) {
     TileStore(context).save(snapshot)
     TileService.getUpdater(context).requestUpdate(ShoppingTileService::class.java)
-}
-
-class MarkDoneWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
-    override suspend fun doWork(): Result {
-        val id = inputData.getString("id") ?: return Result.failure()
-        return try {
-            SharedSyncService().markDone(id)
-            Result.success()
-        } catch (_: Exception) {
-            Result.retry()
-        }
-    }
 }

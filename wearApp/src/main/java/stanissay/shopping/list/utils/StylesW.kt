@@ -16,6 +16,7 @@
 package stanissay.shopping.list.utils
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -24,6 +25,7 @@ import androidx.wear.compose.foundation.CurvedTextStyle
 import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.Shapes
 import androidx.wear.compose.material3.Typography
+import androidx.wear.protolayout.types.argb
 import stanissay.shopping.shared.MainColors
 
 val ColorStyle = ColorScheme(
@@ -82,3 +84,16 @@ object Constants {
     // Buttons
     val BUTTON_SIZE = 28.dp
 }
+
+fun tileColorScheme(c: ColorScheme) = androidx.wear.protolayout.material3.ColorScheme(
+    primary = c.primary.toArgb().argb,
+    secondary = c.secondary.toArgb().argb,
+
+    background = c.background.toArgb().argb,
+    onBackground = c.onBackground.toArgb().argb,
+
+    surfaceContainer = c.surfaceContainer.toArgb().argb,
+    onSurface = c.onSurface.toArgb().argb,
+
+    outline = c.outline.toArgb().argb
+)
