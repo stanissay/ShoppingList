@@ -21,11 +21,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.provider.Settings
+import android.service.quicksettings.TileService
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -76,6 +78,7 @@ class SyncService : Service() {
     private var widgetJob: Job? = null
     private var watchJob: Job? = null
     private var shortcutsJob: Job? = null
+    private var tileJob: Job? = null
     private var myId: String? = null
     private var batchMax = 0L
     private var pending = 0
@@ -101,6 +104,7 @@ class SyncService : Service() {
                     detachAll()
                     clearWidgets(applicationContext)
                     clearShortcuts(applicationContext)
+                    clearTile(applicationContext)
                     stopSelf()
                 }
                 else syncFeatures(uid)
@@ -116,15 +120,17 @@ class SyncService : Service() {
             val wantNotifications = NotificationManagerCompat.from(this@SyncService).areNotificationsEnabled()
             val wantWidget = GlanceAppWidgetManager(this@SyncService).getGlanceIds(ShoppingWidget::class.java).isNotEmpty()
             val wantShortcuts = true
+            val wantTile = true
             val wantWatch = applicationContext.watchHasApp()
 
-            if (!wantNotifications && !wantWidget && !wantWatch && !wantShortcuts) {
+            if (!wantNotifications && !wantWidget && !wantWatch && !wantShortcuts && !wantTile) {
                 detachAll(); stopSelf(); return@launch
             }
             if (wantNotifications) startNotifications(uid) else stopNotifications()
             if (wantWidget) startWidget() else stopWidget()
             if (wantWatch) startWatch() else stopWatch()
             if (wantShortcuts) startShortcuts() else stopShortcuts()
+            if (wantTile) startTile() else stopTile()
         }
     }
 
@@ -150,6 +156,21 @@ class SyncService : Service() {
     }
 
     private fun stopShortcuts() { shortcutsJob?.cancel(); shortcutsJob = null }
+
+    private fun startTile() {
+        if (tileJob?.isActive == true) return
+        tileJob = scope.launch {
+            snapshotFlow.collect { snap ->
+                TileStore.save(applicationContext, snap)
+                TileService.requestListeningState(
+                    applicationContext,
+                    ComponentName(applicationContext, TileServiceA::class.java)
+                )
+            }
+        }
+    }
+
+    private fun stopTile() { tileJob?.cancel(); tileJob = null }
 
     @OptIn(FlowPreview::class)
     private fun startNotifications(uid: String) {
@@ -302,6 +323,7 @@ class SyncService : Service() {
         stopWidget()
         stopWatch()
         stopShortcuts()
+        stopTile()
     }
 
     override fun onDestroy() {

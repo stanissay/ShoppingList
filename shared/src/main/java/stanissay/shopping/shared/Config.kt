@@ -44,6 +44,7 @@ object DataKeys {
     const val OUTGOING_CHANNEL_ID = "shopping_activity"
     const val STOP_AT = "stop_at"
     const val SNAPSHOT = "snapshot"
+    const val TILE_COUNT = "tile_count"
     const val WATCH_HAS_APP = "watch_has_app"
     const val SHOPPING_ACTIVITY = "Shopping activity"
     const val CATEGORY_ID = "category_id"

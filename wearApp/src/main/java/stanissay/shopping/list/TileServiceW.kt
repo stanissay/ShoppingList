@@ -79,14 +79,14 @@ class TileStore(context: Context) {
         set(v) = sp.edit { putString(DataKeys.SELECTED_CATEGORY, v) }
 }
 
-class ShoppingTileService : TileService() {
+class TileServiceW : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest) = scope.future {
-        val store = TileStore(this@ShoppingTileService)
+        val store = TileStore(this@TileServiceW)
         val snapshot = store.snapshot()
         if (snapshot.items.isEmpty() && snapshot.categories.isEmpty()) {
-            withTimeoutOrNull(2000.milliseconds) { readSnapshotFromDataLayer(this@ShoppingTileService) }?.let { store.save(it) }
+            withTimeoutOrNull(2000.milliseconds) { readSnapshotFromDataLayer(this@TileServiceW) }?.let { store.save(it) }
         }
         handleClick(requestParams.currentState.lastClickableId, store)
         val cats = snapshot.sortedCategories()
@@ -94,7 +94,7 @@ class ShoppingTileService : TileService() {
         val items = snapshot.itemsFor(selected?.id)
 
         val layout = shoppingTileLayout(
-            context = this@ShoppingTileService,
+            context = this@TileServiceW,
             deviceParameters = requestParams.deviceConfiguration,
             categoryName = selected?.name.orEmpty(),
             prevCategoryId = snapshot.cycle(selected?.id, -1),
@@ -274,7 +274,7 @@ private fun arrow(resId: String, clickId: String, tint: ColorBuilders.ColorProp)
 
 fun updateTileSnapshot(context: Context, snapshot: ListSnapshot) {
     TileStore(context).save(snapshot)
-    TileService.getUpdater(context).requestUpdate(ShoppingTileService::class.java)
+    TileService.getUpdater(context).requestUpdate(TileServiceW::class.java)
 }
 
 suspend fun readSnapshotFromDataLayer(context: Context): ListSnapshot? = runCatching {

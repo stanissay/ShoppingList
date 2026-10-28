@@ -47,7 +47,7 @@
         </service>
 
         <service
-            android:name=".ShoppingTileService"
+            android:name=".TileServiceW"
             android:exported="true"
             android:icon="@drawable/ic_bag"
             android:label="@string/app_name"
