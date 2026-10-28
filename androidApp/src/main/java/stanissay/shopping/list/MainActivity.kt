@@ -182,12 +182,11 @@ class MainActivity : ComponentActivity() {
         MainViewModelFactory(application, AndroidStringProvider(applicationContext))
     }
     private var requestedCategoryId by mutableStateOf<String?>(null)
+    private var requestedAdd by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) {
-            requestedCategoryId = intent?.getStringExtra(DataKeys.CATEGORY_ID)
-        }
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
             val isLoading by viewModel.sharedViewModel.isLoading.collectAsState()
             MainTheme {
@@ -201,7 +200,11 @@ class MainActivity : ComponentActivity() {
                     MainList(
                         viewModel = viewModel,
                         requestedCategoryId = requestedCategoryId,
-                        onCategoryHandled = { requestedCategoryId = null }
+                        requestedAdd = requestedAdd,
+                        onIntentHandled = {
+                            requestedCategoryId = null
+                            requestedAdd = false
+                        }
                     )
                     if(isLoading) CircularBar()
                 }
@@ -220,7 +223,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        requestedCategoryId = intent.getStringExtra(DataKeys.CATEGORY_ID)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        requestedCategoryId = intent?.getStringExtra(DataKeys.CATEGORY_ID)
+        requestedAdd = intent?.getBooleanExtra(DataKeys.ADD_ITEM, false) == true ||
+                intent?.action == DataKeys.ADD_ITEM
     }
 
     private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { startSyncService() }
@@ -270,7 +279,8 @@ class MainActivity : ComponentActivity() {
 fun MainList(
     viewModel: MainViewModelA,
     requestedCategoryId: String? = null,
-    onCategoryHandled: () -> Unit = {}
+    requestedAdd: Boolean = false,
+    onIntentHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as Activity
@@ -302,7 +312,8 @@ fun MainList(
         if (categories.isEmpty()) return@LaunchedEffect
         val index = categories.indexOfFirst { it.id == id }
         if (index >= 0) pagerState.scrollToPage(index)
-        onCategoryHandled()
+        if (requestedAdd) viewModel.sharedViewModel.showNewItemDialog()
+        onIntentHandled()
     }
 
     LaunchedEffect(Unit) {
@@ -1348,6 +1359,7 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     DoneBtn {
                         scope.launch {
                             activity.stopService(Intent(activity, SyncService::class.java))
+                            clearShortcuts(activity)
                             clearWidgets(activity)
                             GoogleAuth(activity).signOut()
                             viewModel.logout()

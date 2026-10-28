@@ -75,6 +75,7 @@ class SyncService : Service() {
     private var notificationsJob: Job? = null
     private var widgetJob: Job? = null
     private var watchJob: Job? = null
+    private var shortcutsJob: Job? = null
     private var myId: String? = null
     private var batchMax = 0L
     private var pending = 0
@@ -99,6 +100,7 @@ class SyncService : Service() {
                 if (uid == null) {
                     detachAll()
                     clearWidgets(applicationContext)
+                    clearShortcuts(applicationContext)
                     stopSelf()
                 }
                 else syncFeatures(uid)
@@ -112,16 +114,17 @@ class SyncService : Service() {
         syncJob?.cancel()
         syncJob = scope.launch {
             val wantNotifications = NotificationManagerCompat.from(this@SyncService).areNotificationsEnabled()
-            val wantWidget = GlanceAppWidgetManager(this@SyncService)
-                .getGlanceIds(ShoppingWidget::class.java).isNotEmpty()
+            val wantWidget = GlanceAppWidgetManager(this@SyncService).getGlanceIds(ShoppingWidget::class.java).isNotEmpty()
+            val wantShortcuts = true
             val wantWatch = applicationContext.watchHasApp()
 
-            if (!wantNotifications && !wantWidget && !wantWatch) {
+            if (!wantNotifications && !wantWidget && !wantWatch && !wantShortcuts) {
                 detachAll(); stopSelf(); return@launch
             }
             if (wantNotifications) startNotifications(uid) else stopNotifications()
             if (wantWidget) startWidget() else stopWidget()
             if (wantWatch) startWatch() else stopWatch()
+            if (wantShortcuts) startShortcuts() else stopShortcuts()
         }
     }
 
@@ -135,10 +138,18 @@ class SyncService : Service() {
         }
     }
 
-    private fun stopWidget() {
-        widgetJob?.cancel()
-        widgetJob = null
+    private fun stopWidget() { widgetJob?.cancel(); widgetJob = null }
+
+    private fun startShortcuts() {
+        if (shortcutsJob?.isActive == true) return
+        shortcutsJob = scope.launch {
+            snapshotFlow.collect { snap ->
+                updateShortcuts(applicationContext, snap.categories)
+            }
+        }
     }
+
+    private fun stopShortcuts() { shortcutsJob?.cancel(); shortcutsJob = null }
 
     @OptIn(FlowPreview::class)
     private fun startNotifications(uid: String) {
@@ -171,11 +182,7 @@ class SyncService : Service() {
         }
     }
 
-    private fun stopNotifications() {
-        notificationsJob?.cancel()
-        notificationsJob = null
-        pending = 0
-    }
+    private fun stopNotifications() { notificationsJob?.cancel(); notificationsJob = null; pending = 0 }
 
     private fun startWatch() {
         if (watchJob?.isActive == true) return
@@ -294,6 +301,7 @@ class SyncService : Service() {
         stopNotifications()
         stopWidget()
         stopWatch()
+        stopShortcuts()
     }
 
     override fun onDestroy() {

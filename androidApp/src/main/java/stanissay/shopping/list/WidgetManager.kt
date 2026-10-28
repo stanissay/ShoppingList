@@ -46,6 +46,7 @@ import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
@@ -59,6 +60,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import stanissay.shopping.list.WidgetStore.ADD_KEY
 import stanissay.shopping.list.WidgetStore.CATEGORY_KEY
 import stanissay.shopping.list.WidgetStore.DIR_KEY
 import stanissay.shopping.list.WidgetStore.ITEM_KEY
@@ -79,6 +81,7 @@ object WidgetStore {
     val DIR_KEY = ActionParameters.Key<Int>("dir")
     val ITEM_KEY = ActionParameters.Key<String>("item")
     val CATEGORY_KEY = ActionParameters.Key<String>(DataKeys.CATEGORY_ID)
+    val ADD_KEY = ActionParameters.Key<Boolean>(DataKeys.ADD_ITEM)
 
     fun save(context: Context, snapshot: ListSnapshot) = prefs(context).edit {
         putString(DataKeys.SNAPSHOT, json.encodeToString(ListSnapshot.serializer(), snapshot))
@@ -125,6 +128,7 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Spacer(modifier = GlanceModifier.size(Constants.BUTTON_SIZE))
                 Image(
                     ImageProvider(R.drawable.arrow_left),
                     contentDescription = context.getString(R.string.back),
@@ -160,6 +164,17 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                                     DIR_KEY to 1
                                 )
                             )
+                        ),
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
+                )
+                Image(
+                    ImageProvider(R.drawable.plus_btn),
+                    contentDescription = context.getString(R.string.add_item),
+                    modifier = GlanceModifier.size(Constants.BUTTON_SIZE)
+                        .clickable(
+                            if (id != null)
+                                actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id, ADD_KEY to true))
+                            else actionStartActivity<MainActivity>(actionParametersOf(ADD_KEY to true))
                         ),
                     colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
                 )

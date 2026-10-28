@@ -47,6 +47,7 @@ object DataKeys {
     const val WATCH_HAS_APP = "watch_has_app"
     const val SHOPPING_ACTIVITY = "Shopping activity"
     const val CATEGORY_ID = "category_id"
+    const val ADD_ITEM = "add_item"
     val HASH_ID = "StanissayShoppingList".hashCode().absoluteValue
     const val SNAPSHOT_VERSION = "snapshot_version"
     const val SELECTED_CATEGORY = "selected_category"
