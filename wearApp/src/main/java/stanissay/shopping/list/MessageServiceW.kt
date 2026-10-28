@@ -36,8 +36,7 @@ class MessageServiceW : WearableListenerService() {
         when (messageEvent.path) {
             WearRoutes.VERSION -> {
                 serviceScope.launch {
-                    val currentVersion = application.packageManager.getPackageInfo(application.packageName, 0).versionName
-                        ?: applicationContext.getString(R.string.unknown_version)
+                    val currentVersion = application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: applicationContext.getString(R.string.unknown_version)
                     wearManager.sendMessageToPhone(currentVersion, WearRoutes.VERSION)
                 }
             }

@@ -25,7 +25,7 @@ import stanissay.shopping.list.utils.DeviceInfo
 import stanissay.shopping.shared.ServerClock
 
 class MyApplication : Application() {
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
         super.onCreate()
