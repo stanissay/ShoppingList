@@ -36,7 +36,7 @@ object Config {
 object DataKeys {
     const val APP_SETTINGS = "app_settings"
     const val WIDGET_PREFS = "widget_prefs"
-    const val TILE_PREFS = "tile_prefs"
+    const val TILE_PREFS = "tile_prefs1111"
     const val NOTIFICATIONS_PERMISSION_ASKED = "notifications_permission_asked"
     const val BATTERY_EXEMPTION_ASKED = "battery_exemption_asked"
     const val LAST_SEEN = "last_seen"
@@ -67,7 +67,6 @@ object DataKeys {
 
 object WearRoutes {
     const val VERSION = "/version"
-    const val UPDATE = "/update"
     const val SNAPSHOT = "/snapshot"
     const val CAPABILITY = "shopping_watch"
 }

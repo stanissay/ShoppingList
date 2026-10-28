@@ -77,6 +77,8 @@ class TileStore(context: Context) {
     var selectedCategory: String?
         get() = sp.getString(DataKeys.SELECTED_CATEGORY, null)
         set(v) = sp.edit { putString(DataKeys.SELECTED_CATEGORY, v) }
+
+    fun clear() = sp.edit { clear() }
 }
 
 class TileServiceW : TileService() {
@@ -223,7 +225,7 @@ private fun listBox(
         .setWidth(expand())
         .setHeight(expand())
         .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_START)
-        .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
+        .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_TOP)
         .setModifiers(
             ModifiersBuilders.Modifiers.Builder()
                 .setBackground(
@@ -274,6 +276,11 @@ private fun arrow(resId: String, clickId: String, tint: ColorBuilders.ColorProp)
 
 fun updateTileSnapshot(context: Context, snapshot: ListSnapshot) {
     TileStore(context).save(snapshot)
+    TileService.getUpdater(context).requestUpdate(TileServiceW::class.java)
+}
+
+fun clearTile(context: Context) {
+    TileStore(context).clear()
     TileService.getUpdater(context).requestUpdate(TileServiceW::class.java)
 }
 

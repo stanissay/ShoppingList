@@ -573,10 +573,11 @@ fun LogoutDialog(viewModel: MainViewModelW, onDismiss: () -> Unit) {
                     CloseBtn { onDismiss() }
                     DoneBtn {
                         scope.launch {
-                            GoogleAuth(activity).signOut()
                             Wearable.getDataClient(context)
                                 .deleteDataItems(Uri.Builder().scheme("wear").authority("*").path(WearRoutes.SNAPSHOT).build())
                                 .await()
+                            clearTile(activity)
+                            GoogleAuth(activity).signOut()
                             viewModel.logout()
                         }
                     }

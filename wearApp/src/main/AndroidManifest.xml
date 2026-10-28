@@ -58,7 +58,7 @@
             </intent-filter>
             <meta-data
                 android:name="androidx.wear.tiles.PREVIEW"
-                android:resource="@drawable/google" />
+                android:resource="@drawable/tile_prev" />
         </service>
 
         <service

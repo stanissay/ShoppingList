@@ -15,19 +15,46 @@
 
 package stanissay.shopping.list
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import stanissay.shopping.shared.ListSnapshot
+import stanissay.shopping.shared.R
 import stanissay.shopping.shared.WearRoutes
 import kotlin.time.Duration.Companion.milliseconds
+
+class MessageServiceW : WearableListenerService() {
+    private val wearManager by lazy { WearManagerW(application) }
+    private val serviceScope
+        get() = (application as MyApplication).appScope
+
+    @SuppressLint("WearRecents")
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        super.onMessageReceived(messageEvent)
+        when (messageEvent.path) {
+            WearRoutes.VERSION -> {
+                serviceScope.launch {
+                    val currentVersion = application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: applicationContext.getString(
+                        R.string.unknown_version)
+                    wearManager.sendMessageToPhone(currentVersion, WearRoutes.VERSION)
+                }
+            }
+            else -> {}
+        }
+    }
+}
 
 class WearManagerW(private val context: Context) {
     suspend fun sendMessageToPhone(message: String, route: String): Boolean {
@@ -56,6 +83,7 @@ class WearDataListener : WearableListenerService() {
     override fun onDataChanged(events: DataEventBuffer) {
         for (event in events) {
             if (event.dataItem.uri.path != WearRoutes.SNAPSHOT) continue
+            if(Firebase.auth.currentUser == null) return
             when (event.type) {
                 DataEvent.TYPE_CHANGED -> {
                     val json = DataMapItem.fromDataItem(event.dataItem).dataMap.getString("json") ?: continue

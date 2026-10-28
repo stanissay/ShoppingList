@@ -16,13 +16,33 @@
 package stanissay.shopping.list
 
 import android.content.Context
+import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
+import stanissay.shopping.shared.Config
 import stanissay.shopping.shared.WearRoutes
 import kotlin.time.Duration.Companion.milliseconds
+
+class MessageServiceA : WearableListenerService() {
+    private val wearManager by lazy { WearManagerA(application) }
+    private val serviceScope
+        get() = (application as MyApplication).appScope
+
+    override fun onMessageReceived(messageEvent: MessageEvent) {
+        super.onMessageReceived(messageEvent)
+        when (messageEvent.path) {
+            WearRoutes.VERSION -> {
+                val currentVersion = String(messageEvent.data)
+                Config.wearVersion = currentVersion
+            }
+            else -> {}
+        }
+    }
+}
 
 class WearManagerA(private val context: Context) {
     suspend fun sendMessageToWatch(message: String, route: String): Boolean {
