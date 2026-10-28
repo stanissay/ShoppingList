@@ -1348,6 +1348,7 @@ fun LogoutDialog(viewModel: MainViewModelA, onDismiss: () -> Unit) {
                     DoneBtn {
                         scope.launch {
                             activity.stopService(Intent(activity, SyncService::class.java))
+                            clearWidgets(activity)
                             GoogleAuth(activity).signOut()
                             viewModel.logout()
                         }

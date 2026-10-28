@@ -16,10 +16,17 @@
 package stanissay.shopping.list
 
 import android.content.Context
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import stanissay.shopping.shared.ListSnapshot
+import stanissay.shopping.shared.WearRoutes
 import kotlin.time.Duration.Companion.milliseconds
 
 class WearManagerW(private val context: Context) {
@@ -41,6 +48,22 @@ class WearManagerW(private val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
             false
+        }
+    }
+}
+
+class WearDataListener : WearableListenerService() {
+    override fun onDataChanged(events: DataEventBuffer) {
+        for (event in events) {
+            if (event.dataItem.uri.path != WearRoutes.SNAPSHOT) continue
+            when (event.type) {
+                DataEvent.TYPE_CHANGED -> {
+                    val json = DataMapItem.fromDataItem(event.dataItem).dataMap.getString("json") ?: continue
+                    val snap = runCatching { Json.decodeFromString(ListSnapshot.serializer(), json) }.getOrNull() ?: continue
+                    updateTileSnapshot(applicationContext, snap)
+                }
+                DataEvent.TYPE_DELETED -> updateTileSnapshot(applicationContext, ListSnapshot())
+            }
         }
     }
 }

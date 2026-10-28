@@ -55,6 +55,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import stanissay.shopping.list.WidgetStore.CATEGORY_KEY
@@ -90,6 +92,8 @@ object WidgetStore {
         val s = load(context)
         save(context, s.copy(items = s.items.filter { it.id != id }))
     }
+
+    fun clear(context: Context) = prefs(context).edit { clear() }
 }
 
 class ShoppingWidget : GlanceAppWidget() {
@@ -116,50 +120,80 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
             .background(GlanceTheme.colors.background)
             .padding(MainConstants.SPACE)
     ) {
-        Row(
-            modifier = GlanceModifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(ImageProvider(R.drawable.arrow_left),
-                contentDescription = context.getString(R.string.back),
-                modifier = GlanceModifier.size(Constants.BUTTON_SIZE)
-                    .clickable(actionRunCallback<ChangeCategoryAction>(actionParametersOf(DIR_KEY to -1))),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
-            )
-            Text(
-                text = title,
-                modifier = GlanceModifier.defaultWeight().clickable(
-                    if (id != null)
-                        actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
-                    else actionStartActivity<MainActivity>()
-                ),
-                style = TextStyle(
-                    color = GlanceTheme.colors.primary,
-                    fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
+        if(Firebase.auth.currentUser != null) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    ImageProvider(R.drawable.arrow_left),
+                    contentDescription = context.getString(R.string.back),
+                    modifier = GlanceModifier.size(Constants.BUTTON_SIZE)
+                        .clickable(
+                            actionRunCallback<ChangeCategoryAction>(
+                                actionParametersOf(
+                                    DIR_KEY to -1
+                                )
+                            )
+                        ),
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
                 )
-            )
-            Image(ImageProvider(R.drawable.arrow_right),
-                contentDescription = context.getString(R.string.forward),
-                modifier = GlanceModifier.size(Constants.BUTTON_SIZE)
-                    .clickable(actionRunCallback<ChangeCategoryAction>(actionParametersOf(DIR_KEY to 1))),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
-            )
-        }
-        if(items.isNotEmpty()) {
-            LazyColumn {
-                items(items, itemId = { it.id.hashCode().toLong() }) { item ->
-                    CheckBox(
-                        checked = false,
-                        onCheckedChange = actionRunCallback<ToggleItemAction>(
-                            actionParametersOf(ITEM_KEY to item.id)),
-                        text = item.displayLabel(),
-                        style = TextStyle(color = GlanceTheme.colors.onBackground)
+                Text(
+                    text = title,
+                    modifier = GlanceModifier.defaultWeight().clickable(
+                        if (id != null)
+                            actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
+                        else actionStartActivity<MainActivity>()
+                    ),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.primary,
+                        fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
                     )
+                )
+                Image(
+                    ImageProvider(R.drawable.arrow_right),
+                    contentDescription = context.getString(R.string.forward),
+                    modifier = GlanceModifier.size(Constants.BUTTON_SIZE)
+                        .clickable(
+                            actionRunCallback<ChangeCategoryAction>(
+                                actionParametersOf(
+                                    DIR_KEY to 1
+                                )
+                            )
+                        ),
+                    colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
+                )
+            }
+            if (items.isNotEmpty()) {
+                LazyColumn {
+                    items(items, itemId = { it.id.hashCode().toLong() }) { item ->
+                        CheckBox(
+                            checked = false,
+                            onCheckedChange = actionRunCallback<ToggleItemAction>(
+                                actionParametersOf(ITEM_KEY to item.id)
+                            ),
+                            text = item.displayLabel(),
+                            style = TextStyle(color = GlanceTheme.colors.onBackground)
+                        )
+                    }
                 }
+            } else {
+                Text(
+                    text = context.getString(R.string.all_items_purchased),
+                    modifier = GlanceModifier.fillMaxSize().clickable(
+                        if (id != null)
+                            actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
+                        else actionStartActivity<MainActivity>()
+                    ),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                )
             }
         } else {
             Text(
-                text = context.getString(R.string.all_items_purchased),
+                text = context.getString(R.string.log_in_to_use_widget),
                 modifier = GlanceModifier.fillMaxSize().clickable(
                     if (id != null)
                         actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
@@ -168,7 +202,8 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                 style = TextStyle(
                     color = GlanceTheme.colors.onBackground,
                     textAlign = TextAlign.Center
-                )
+                ),
+                maxLines = Int.MAX_VALUE
             )
         }
     }
@@ -206,6 +241,17 @@ suspend fun refreshWidgets(context: Context) {
     val ids = GlanceAppWidgetManager(context).getGlanceIds(ShoppingWidget::class.java)
     ids.forEach { id ->
         updateAppWidgetState(context, id) { prefs ->
+            prefs[DataKeys.SNAPSHOT_VERSION_KEY] = (prefs[DataKeys.SNAPSHOT_VERSION_KEY] ?: 0L) + 1
+        }
+    }
+    ShoppingWidget().updateAll(context)
+}
+
+suspend fun clearWidgets(context: Context) {
+    WidgetStore.clear(context)
+    GlanceAppWidgetManager(context).getGlanceIds(ShoppingWidget::class.java).forEach { id ->
+        updateAppWidgetState(context, id) { prefs ->
+            prefs.remove(DataKeys.SELECTED_CATEGORY_KEY)
             prefs[DataKeys.SNAPSHOT_VERSION_KEY] = (prefs[DataKeys.SNAPSHOT_VERSION_KEY] ?: 0L) + 1
         }
     }

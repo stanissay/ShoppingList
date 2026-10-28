@@ -19,6 +19,7 @@ package stanissay.shopping.list
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import androidx.core.content.edit
 import androidx.wear.protolayout.ActionBuilders
 import androidx.wear.protolayout.ActionBuilders.launchAction
@@ -39,11 +40,16 @@ import androidx.wear.protolayout.types.layoutString
 import androidx.wear.tiles.RequestBuilders
 import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
+import com.google.android.gms.wearable.DataMapItem
+import com.google.android.gms.wearable.PutDataRequest
+import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import stanissay.shopping.list.utils.ColorStyle
 import stanissay.shopping.list.utils.tileColorScheme
@@ -52,7 +58,9 @@ import stanissay.shopping.shared.ListSnapshot
 import stanissay.shopping.shared.MainConstants
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.ShoppingItem
+import stanissay.shopping.shared.WearRoutes
 import stanissay.shopping.shared.displayLabel
+import kotlin.time.Duration.Companion.milliseconds
 
 class TileStore(context: Context) {
     private val sp = context.applicationContext.getSharedPreferences(DataKeys.TILE_PREFS, Context.MODE_PRIVATE)
@@ -76,9 +84,11 @@ class ShoppingTileService : TileService() {
 
     override fun onTileRequest(requestParams: RequestBuilders.TileRequest) = scope.future {
         val store = TileStore(this@ShoppingTileService)
-        handleClick(requestParams.currentState.lastClickableId, store)
-
         val snapshot = store.snapshot()
+        if (snapshot.items.isEmpty() && snapshot.categories.isEmpty()) {
+            withTimeoutOrNull(2000.milliseconds) { readSnapshotFromDataLayer(this@ShoppingTileService) }?.let { store.save(it) }
+        }
+        handleClick(requestParams.currentState.lastClickableId, store)
         val cats = snapshot.sortedCategories()
         val selected = cats.firstOrNull { it.id == store.selectedCategory } ?: cats.firstOrNull()
         val items = snapshot.itemsFor(selected?.id)
@@ -87,6 +97,8 @@ class ShoppingTileService : TileService() {
             context = this@ShoppingTileService,
             deviceParameters = requestParams.deviceConfiguration,
             categoryName = selected?.name.orEmpty(),
+            prevCategoryId = snapshot.cycle(selected?.id, -1),
+            nextCategoryId = snapshot.cycle(selected?.id, 1),
             items = items
         )
         TileBuilders.Tile.Builder()
@@ -96,11 +108,8 @@ class ShoppingTileService : TileService() {
     }
 
     private fun handleClick(id: String?, store: TileStore) {
-        when (id) {
-            DataKeys.ID_PREV, DataKeys.ID_NEXT -> {
-                val dir = if (id == DataKeys.ID_NEXT) 1 else -1
-                store.selectedCategory = store.snapshot().cycle(store.selectedCategory, dir)
-            }
+        if (id != null && id.startsWith(DataKeys.CATEGORY_ID)) {
+            store.selectedCategory = id.removePrefix(DataKeys.CATEGORY_ID)
         }
     }
 
@@ -125,6 +134,8 @@ fun shoppingTileLayout(
     context: Context,
     deviceParameters: DeviceParametersBuilders.DeviceParameters,
     categoryName: String,
+    prevCategoryId: String?,
+    nextCategoryId: String?,
     items: List<ShoppingItem>
 ) = materialScope(
     context = context,
@@ -149,7 +160,7 @@ fun shoppingTileLayout(
                 .setWidth(expand())
                 .setHeight(expand())
                 .setVerticalAlignment(LayoutElementBuilders.VERTICAL_ALIGN_CENTER)
-                .addContent(arrow(DataKeys.ICON_LEFT, DataKeys.ID_PREV, colorScheme.secondary.prop))
+                .addContent(arrow(DataKeys.ICON_LEFT, DataKeys.CATEGORY_ID + prevCategoryId.orEmpty(), colorScheme.secondary.prop))
                 .addContent(
                     listBox(
                         backgroundColor = colorScheme.background.prop,
@@ -196,7 +207,7 @@ fun shoppingTileLayout(
                         }.build()
                     )
                 )
-                .addContent(arrow(DataKeys.ICON_RIGHT, DataKeys.ID_NEXT, colorScheme.secondary.prop))
+                .addContent(arrow(DataKeys.ICON_RIGHT, DataKeys.CATEGORY_ID + nextCategoryId.orEmpty(), colorScheme.secondary.prop))
                 .build()
         }
     )
@@ -265,3 +276,19 @@ fun updateTileSnapshot(context: Context, snapshot: ListSnapshot) {
     TileStore(context).save(snapshot)
     TileService.getUpdater(context).requestUpdate(ShoppingTileService::class.java)
 }
+
+suspend fun readSnapshotFromDataLayer(context: Context): ListSnapshot? = runCatching {
+    val uri = Uri.Builder()
+        .scheme(PutDataRequest.WEAR_URI_SCHEME)
+        .authority("*")
+        .path(WearRoutes.SNAPSHOT)
+        .build()
+    val buffer = Wearable.getDataClient(context).getDataItems(uri).await()
+    try {
+        buffer.firstOrNull()
+            ?.let { DataMapItem.fromDataItem(it).dataMap.getString("json") }
+            ?.let { Json.decodeFromString(ListSnapshot.serializer(), it) }
+    } finally {
+        buffer.release()
+    }
+}.getOrNull()

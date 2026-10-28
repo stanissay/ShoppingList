@@ -16,8 +16,11 @@
 package stanissay.shopping.list.utils
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -25,8 +28,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import kotlinx.coroutines.tasks.await
 import stanissay.shopping.list.MainViewModelA
+import stanissay.shopping.list.SyncService
 import stanissay.shopping.shared.DataKeys
 import stanissay.shopping.shared.StringProvider
 import stanissay.shopping.shared.WearRoutes
@@ -44,6 +50,21 @@ class MainViewModelFactory(
             return MainViewModelA(app, strings) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
+            intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        if (Firebase.auth.currentUser == null) return
+
+        runCatching {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, SyncService::class.java).setAction(DataKeys.ACTION_CONNECT_NOW)
+            )
+        }
     }
 }
 

@@ -39,6 +39,13 @@
             </intent-filter>
         </service>
 
+        <service android:name=".WearDataListener" android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/snapshot" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".ShoppingTileService"
             android:exported="true"

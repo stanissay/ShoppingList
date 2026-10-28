@@ -58,9 +58,6 @@ object DataKeys {
     const val NEW_ITEMS_NOTIFICATION_ID = 1002
     const val STOP_DELAY = 3 * 60 * 1000L           // 3 minutes
     const val RESOURCES_VERSION = "1"
-    const val ID_PREV = "prev"
-    const val ID_NEXT = "next"
-    const val ID_DONE = "done"
     const val ID_OPEN = "open"
     const val ICON_LEFT = "arrow_left"
     const val ICON_RIGHT = "arrow_right"
@@ -69,6 +66,7 @@ object DataKeys {
 object WearRoutes {
     const val VERSION = "/version"
     const val UPDATE = "/update"
+    const val SNAPSHOT = "/snapshot"
     const val CAPABILITY = "shopping_watch"
 }
 

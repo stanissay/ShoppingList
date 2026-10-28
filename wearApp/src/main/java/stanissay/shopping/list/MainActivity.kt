@@ -18,6 +18,7 @@ package stanissay.shopping.list
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -89,7 +90,9 @@ import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.timeTextCurvedText
 import coil3.compose.AsyncImage
+import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import stanissay.shopping.list.utils.CircularBar
 import stanissay.shopping.list.utils.ClickableBox
 import stanissay.shopping.list.utils.CloseBtn
@@ -114,6 +117,7 @@ import stanissay.shopping.shared.PaddingStyle
 import stanissay.shopping.shared.R
 import stanissay.shopping.shared.ShoppingItem
 import stanissay.shopping.shared.UiEvent
+import stanissay.shopping.shared.WearRoutes
 import stanissay.shopping.shared.showCustomToast
 import kotlin.math.roundToInt
 
@@ -570,6 +574,9 @@ fun LogoutDialog(viewModel: MainViewModelW, onDismiss: () -> Unit) {
                     DoneBtn {
                         scope.launch {
                             GoogleAuth(activity).signOut()
+                            Wearable.getDataClient(context)
+                                .deleteDataItems(Uri.Builder().scheme("wear").authority("*").path(WearRoutes.SNAPSHOT).build())
+                                .await()
                             viewModel.logout()
                         }
                     }

@@ -40,6 +40,8 @@
     <string name="go_to_settings">Перейти до налаштувань</string>
     <string name="new_items">Нові товари</string>
     <string name="new_items_message">Сповіщення про додані товари</string>
+    <string name="log_in_to_use_widget">Увійдіть, щоб користуватись віджетом</string>
+
     <plurals name="new_items_added">
         <item quantity="one">Додано %d новий товар</item>
         <item quantity="few">Додано %d нові товари</item>

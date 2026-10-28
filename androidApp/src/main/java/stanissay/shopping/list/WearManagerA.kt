@@ -16,10 +16,12 @@
 package stanissay.shopping.list
 
 import android.content.Context
+import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withTimeout
+import stanissay.shopping.shared.WearRoutes
 import kotlin.time.Duration.Companion.milliseconds
 
 class WearManagerA(private val context: Context) {
@@ -44,5 +46,12 @@ class WearManagerA(private val context: Context) {
             e.printStackTrace()
             false
         }
+    }
+
+    suspend fun putSnapshot(json: String) {
+        val request = PutDataMapRequest.create(WearRoutes.SNAPSHOT).apply {
+            dataMap.putString("json", json)
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(context).putDataItem(request).await()
     }
 }

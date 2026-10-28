@@ -96,7 +96,11 @@ class SyncService : Service() {
         Wearable.getCapabilityClient(this).addListener(capabilityListener, WearRoutes.CAPABILITY)
         authJob = scope.launch {
             service.userId().collect { uid ->
-                if (uid == null) { detachAll(); stopSelf() }
+                if (uid == null) {
+                    detachAll()
+                    clearWidgets(applicationContext)
+                    stopSelf()
+                }
                 else syncFeatures(uid)
             }
         }
@@ -181,7 +185,7 @@ class SyncService : Service() {
                 .conflate()
                 .collect { snap ->
                     withContext(Dispatchers.IO) {
-                        WearManagerA(applicationContext).sendMessageToWatch(Json.encodeToString(snap), WearRoutes.UPDATE)
+                        WearManagerA(applicationContext).putSnapshot(Json.encodeToString(snap))
                     }
                 }
         }
