@@ -145,7 +145,7 @@ fun shoppingTileLayout(
     allowDynamicTheme = false,
     defaultColorScheme = tileColorScheme(ColorStyle)
 ) {
-    val rows = if (deviceParameters.screenWidthDp >= MainConstants.TILE_LARGE_SCREEN_DP) 5 else 4
+    val rows = if (deviceParameters.screenWidthDp >= MainConstants.TILE_LARGE_SCREEN_DP) 10 else 8
     val more = (items.size - rows).coerceAtLeast(0)
 
     primaryLayout(
