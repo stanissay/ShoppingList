@@ -200,7 +200,7 @@ fun shoppingTileLayout(
                             if (more > 0) {
                                 addContent(
                                     text(
-                                        text = "${R.string.more} $more".layoutString,
+                                        text = "${context.getString(R.string.more)} $more".layoutString,
                                         typography = Typography.LABEL_SMALL,
                                         color = colorScheme.onSurface
                                     )
