@@ -43,7 +43,7 @@ private val widgetColorScheme = darkColorScheme(
     primary = MainColors.FIRST_ACCENT,
     secondary = MainColors.SECOND_ACCENT,
 
-    background = MainColors.BACKGROUND,
+    background = MainColors.BACKGROUND.copy(alpha = 0.85f),
     onBackground = MainColors.WHITE,
 
     surface = MainColors.GRAY,
@@ -106,4 +106,7 @@ object Constants {
     // Elements
     val SCROLL_BAR = 4.dp       // Vertical scroll bar
     val DROPDOWN = 240.dp       // Dropdowns width
+
+    val WIDGET_TEXT = 14.sp
+    val WIDGET_TITLE = 16.sp
 }

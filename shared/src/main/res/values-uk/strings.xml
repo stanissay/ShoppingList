@@ -42,6 +42,12 @@
     <string name="new_items_message">Сповіщення про додані товари</string>
     <string name="log_in_to_use_widget">Увійдіть, щоб користуватись віджетом</string>
 
+    <plurals name="items">
+        <item quantity="one">%d товар</item>
+        <item quantity="few">%d товари</item>
+        <item quantity="many">%d товарів</item>
+        <item quantity="other">%d товару</item>
+    </plurals>
     <plurals name="new_items_added">
         <item quantity="one">Додано %d новий товар</item>
         <item quantity="few">Додано %d нові товари</item>

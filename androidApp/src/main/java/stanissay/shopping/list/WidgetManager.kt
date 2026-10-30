@@ -44,6 +44,7 @@ import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -142,18 +143,24 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                         ),
                     colorFilter = ColorFilter.tint(GlanceTheme.colors.secondary)
                 )
-                Text(
-                    text = title,
-                    modifier = GlanceModifier.defaultWeight().clickable(
+                Box(
+                    modifier = GlanceModifier.defaultWeight().padding(MainConstants.SPACE).clickable(
                         if (id != null)
                             actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
                         else actionStartActivity<MainActivity>()
                     ),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.primary,
-                        fontWeight = FontWeight.Bold, textAlign = TextAlign.Center
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = title,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = Constants.WIDGET_TITLE,
+                            textAlign = TextAlign.Center
+                        )
                     )
-                )
+                }
                 Image(
                     ImageProvider(R.drawable.arrow_right),
                     contentDescription = context.getString(R.string.forward),
@@ -188,38 +195,51 @@ private fun WidgetContent(context: Context, title: String, id: String?, items: L
                                 actionParametersOf(ITEM_KEY to item.id)
                             ),
                             text = item.displayLabel(),
-                            style = TextStyle(color = GlanceTheme.colors.onBackground)
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onBackground,
+                                fontSize = Constants.WIDGET_TEXT
+                            )
                         )
                     }
                 }
             } else {
-                Text(
-                    text = context.getString(R.string.all_items_purchased),
+                Box(
                     modifier = GlanceModifier.fillMaxSize().clickable(
                         if (id != null)
                             actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
                         else actionStartActivity<MainActivity>()
                     ),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        textAlign = TextAlign.Center
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = context.getString(R.string.all_items_purchased),
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onBackground,
+                            fontSize = Constants.WIDGET_TITLE,
+                            textAlign = TextAlign.Center
+                        )
                     )
-                )
+                }
             }
         } else {
-            Text(
-                text = context.getString(R.string.log_in_to_use_widget),
+            Box(
                 modifier = GlanceModifier.fillMaxSize().clickable(
                     if (id != null)
                         actionStartActivity<MainActivity>(actionParametersOf(CATEGORY_KEY to id))
                     else actionStartActivity<MainActivity>()
                 ),
-                style = TextStyle(
-                    color = GlanceTheme.colors.onBackground,
-                    textAlign = TextAlign.Center
-                ),
-                maxLines = Int.MAX_VALUE
-            )
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Text(
+                    text = context.getString(R.string.log_in_to_use_widget),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        fontSize = Constants.WIDGET_TITLE,
+                        textAlign = TextAlign.Center
+                    ),
+                    maxLines = Int.MAX_VALUE
+                )
+            }
         }
     }
 }

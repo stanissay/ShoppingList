@@ -55,10 +55,11 @@ class TileServiceA : TileService() {
 
     private fun updateTile() {
         val tile = qsTile ?: return
+        val count = TileStore.count(this)
 
         tile.label = getString(R.string.app_name)
         tile.state = Tile.STATE_INACTIVE
-        tile.subtitle = TileStore.count(this).takeIf { it > 0 }?.toString()
+        tile.subtitle = count.takeIf { it > 0 }?.let { resources.getQuantityString(R.plurals.items, it, it) }
 
         tile.updateTile()
     }

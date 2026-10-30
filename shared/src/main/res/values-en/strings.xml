@@ -42,7 +42,10 @@
     <string name="new_items_message">Notifications about added items</string>
     <string name="log_in_to_use_widget">Log in to use the widget</string>
 
-
+    <plurals name="items">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
     <plurals name="new_items_added">
         <item quantity="one">%d new item added</item>
         <item quantity="other">%d new items added</item>
