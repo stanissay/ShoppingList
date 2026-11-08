@@ -618,10 +618,12 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                 .reorderable(reorderState)
         ) {
             items.forEachIndexed { index, item ->
-                item(key = item.id) {
+                val lazyKey = "${item.id}:${item.done}"
+
+                item(key = lazyKey) {
                     ReorderableItem(
                         state = reorderState,
-                        key = item.id
+                        key = lazyKey
                     ) { isDragging ->
                         LaunchedEffect(isDragging) {
                             if (isDragging) haptic.performHapticFeedback(
@@ -646,16 +648,7 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                                 },
                                 onCheck = {
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-
-                                    val firstIndex = listState.firstVisibleItemIndex
-                                    val firstOffset = listState.firstVisibleItemScrollOffset
-                                    val wasAnchor = index == firstIndex
-
                                     viewModel.sharedViewModel.toggleItemDone(item)
-
-                                    if (wasAnchor) {
-                                        listState.requestScrollToItem(firstIndex, firstOffset)
-                                    }
                                 },
                                 onQuantity = { viewModel.sharedViewModel.updateQuantity(item, it) },
                                 isSwiped = swipedItemId == item.id,
@@ -1014,6 +1007,14 @@ fun ShoppingListItem(
                 }
 
                 if (item.done) {
+                    val startPadding by animateDpAsState(
+                        targetValue = if (isExpanded) {
+                            Constants.BUTTON_SIZE_S + MainConstants.LINE * 4
+                        } else MainConstants.LINE * 4,
+                        animationSpec = tween(MainConstants.ANIMATION_MS),
+                        label = "startPadding"
+                    )
+
                     val endPadding by animateDpAsState(
                         targetValue = if (isExpanded) {
                             Constants.BUTTON_SIZE_S * 2 + Constants.BASE_SIZE + MainConstants.LINE * 4
@@ -1038,23 +1039,23 @@ fun ShoppingListItem(
                         clipRect(bottom = Constants.BASE_SIZE.toPx()) {
                             val centerY = Constants.BASE_SIZE.toPx() / 2
                             val maxThickness = MainConstants.LINE.toPx()
-                            val startPaddingPx = maxThickness * 4
+                            val baseStartPx = MainConstants.LINE.toPx() * 4
+                            val trimStartPx = startPadding.toPx().coerceAtLeast(baseStartPx)
                             val endPaddingPx = with(density) { endPadding.toPx() }
                             val stepMin = 8.dp.toPx()
                             val stepRandom = 12.dp.toPx()
                             val yRange = 2.dp.toPx()
                             val points = mutableListOf<Pair<Float, Float>>()
                             val thicknesses = mutableListOf<Float>()
-                            var x = startPaddingPx
+                            var x = baseStartPx
                             var y = centerY
                             var index = 0
 
                             points.add(x to y)
                             thicknesses.add(maxThickness * randomThicknesses[index++])
 
-                            while (true) {
+                            while (index < 499) {
                                 val nextX = x + stepMin + randomOffsets[index].first * stepRandom
-
                                 if (nextX >= size.width - endPaddingPx) break
 
                                 x = nextX
@@ -1066,11 +1067,29 @@ fun ShoppingListItem(
                                 index++
                             }
 
-                            val endX = (size.width - endPaddingPx).coerceAtLeast(startPaddingPx)
+                            val endX = (size.width - endPaddingPx).coerceAtLeast(baseStartPx)
                             val endY = if (points.size > 1) points.last().second else centerY
 
                             points.add(endX to endY)
                             thicknesses.add(maxThickness * randomThicknesses[index.coerceAtMost(499)])
+
+                            if (trimStartPx >= endX) return@clipRect
+
+                            if (trimStartPx > baseStartPx) {
+                                val i = points.indexOfFirst { it.first > trimStartPx }
+                                if (i > 0) {
+                                    val (x0, y0) = points[i - 1]
+                                    val (x1, y1) = points[i]
+                                    val t = ((trimStartPx - x0) / (x1 - x0)).coerceIn(0f, 1f)
+                                    val newY = y0 + (y1 - y0) * t
+                                    val newThickness = thicknesses[i - 1] + (thicknesses[i] - thicknesses[i - 1]) * t
+
+                                    points.subList(0, i).clear()
+                                    thicknesses.subList(0, i).clear()
+                                    points.add(0, trimStartPx to newY)
+                                    thicknesses.add(0, newThickness)
+                                }
+                            }
 
                             val path = Path().apply {
                                 val first = points.first()
