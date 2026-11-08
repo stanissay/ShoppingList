@@ -24,7 +24,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -646,12 +645,17 @@ fun ItemsList(viewModel: MainViewModelA, categoryId: String) {
                                     viewModel.sharedViewModel.deleteItem(item)
                                 },
                                 onCheck = {
-                                    Log.d(
-                                        "ShoppingSwipe",
-                                        "onCheck: id=${item.id}, done=${item.done}"
-                                    )
                                     haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+
+                                    val firstIndex = listState.firstVisibleItemIndex
+                                    val firstOffset = listState.firstVisibleItemScrollOffset
+                                    val wasAnchor = index == firstIndex
+
                                     viewModel.sharedViewModel.toggleItemDone(item)
+
+                                    if (wasAnchor) {
+                                        listState.requestScrollToItem(firstIndex, firstOffset)
+                                    }
                                 },
                                 onQuantity = { viewModel.sharedViewModel.updateQuantity(item, it) },
                                 isSwiped = swipedItemId == item.id,
@@ -903,11 +907,12 @@ fun ShoppingListItem(
                             enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
                             exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
                         ) { CheckBtn(checked = item.done) { onCheck() } }
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(PaddingStyle.horizontalS),
-                            contentAlignment = Alignment.CenterStart
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Start
                         ) {
                             MainText(
                                 text = item.name,
@@ -915,6 +920,18 @@ fun ShoppingListItem(
                                 style = MaterialTheme.typography.headlineMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = item.note.isNotBlank() && !isExpanded,
+                                enter = fadeIn(tween(MainConstants.ANIMATION_MS)) + expandHorizontally(tween(MainConstants.ANIMATION_MS)),
+                                exit = fadeOut(tween(MainConstants.ANIMATION_MS)) + shrinkHorizontally(tween(MainConstants.ANIMATION_MS))
+                            ) {
+                                MainText(
+                                    text = "*",
+                                    textAlign = TextAlign.Start,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                         Row(
                             modifier = Modifier.height(Constants.BASE_SIZE),

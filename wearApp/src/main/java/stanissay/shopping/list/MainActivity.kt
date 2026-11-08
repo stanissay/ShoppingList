@@ -521,16 +521,24 @@ fun ShoppingListItem(
                         .padding(PaddingStyle.horizontalXs),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier.weight(1f)
                             .padding(PaddingStyle.horizontalS),
-                        contentAlignment = Alignment.CenterStart
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Start
                     ) {
                         MainText(
                             text = item.name,
                             textAlign = TextAlign.Start,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        if(item.note.isNotBlank()) {
+                            MainText(
+                                text = "*",
+                                textAlign = TextAlign.Start,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     item.quantity?.takeIf { it.isNotBlank() }?.let {
                         Box(
