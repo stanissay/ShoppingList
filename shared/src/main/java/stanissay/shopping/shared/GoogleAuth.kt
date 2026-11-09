@@ -25,7 +25,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
-class GoogleAuth(private val activity: Activity) {
+class GoogleAuth(private val activity: Activity, private val clientId: String) {
     private val auth = FirebaseAuth.getInstance()
     private val credentialManager = CredentialManager.create(activity)
 
@@ -40,7 +40,7 @@ class GoogleAuth(private val activity: Activity) {
         }
 
         val googleOption = GetGoogleIdOption.Builder()
-            .setServerClientId(activity.getString(R.string.default_web_client_id))
+            .setServerClientId(clientId)
             .setFilterByAuthorizedAccounts(false).build()
 
         val request = GetCredentialRequest.Builder()

@@ -278,7 +278,7 @@ fun MainScreen(viewModel: MainViewModelW, listState: TransformingLazyColumnState
                             modifier = transformedItem(transformationSpec)
                         ) {
                             scope.launch {
-                                val result = GoogleAuth(activity).signIn()
+                                val result = GoogleAuth(activity, activity.getString(stanissay.shopping.list.R.string.default_web_client_id)).signIn()
                                 result.onSuccess {
                                     viewModel.login()
                                 }.onFailure { error ->
@@ -585,7 +585,7 @@ fun LogoutDialog(viewModel: MainViewModelW, onDismiss: () -> Unit) {
                                 .deleteDataItems(Uri.Builder().scheme("wear").authority("*").path(WearRoutes.SNAPSHOT).build())
                                 .await()
                             clearTile(activity)
-                            GoogleAuth(activity).signOut()
+                            GoogleAuth(activity, activity.getString(stanissay.shopping.list.R.string.default_web_client_id)).signOut()
                             viewModel.logout()
                         }
                     }
